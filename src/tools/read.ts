@@ -12,7 +12,7 @@ interface ReadResponse {
   };
 }
 
-export function readUrl(url: string, token: string): Promise<ReadResponse> {
+export function readUrl(url: string, token: string): Promise<{ response: ReadResponse, tokens: number }> {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({url});
 
@@ -33,7 +33,10 @@ export function readUrl(url: string, token: string): Promise<ReadResponse> {
     const req = https.request(options, (res) => {
       let responseData = '';
       res.on('data', (chunk) => responseData += chunk);
-      res.on('end', () => resolve(JSON.parse(responseData)));
+      res.on('end', () => {
+        const response = JSON.parse(responseData) as ReadResponse;
+        resolve({ response, tokens: response.data?.usage?.tokens || 0 });
+      });
     });
 
     req.on('error', reject);

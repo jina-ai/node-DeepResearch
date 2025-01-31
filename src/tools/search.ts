@@ -12,7 +12,7 @@ interface SearchResponse {
   }>;
 }
 
-export function search(query: string, token: string): Promise<SearchResponse> {
+export function search(query: string, token: string): Promise<{ response: SearchResponse, tokens: number }> {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 's.jina.ai',
@@ -29,7 +29,11 @@ export function search(query: string, token: string): Promise<SearchResponse> {
     const req = https.request(options, (res) => {
       let responseData = '';
       res.on('data', (chunk) => responseData += chunk);
-      res.on('end', () => resolve(JSON.parse(responseData)));
+      res.on('end', () => {
+        const response = JSON.parse(responseData) as SearchResponse;
+        const totalTokens = response.data.reduce((sum, item) => sum + (item.usage?.tokens || 0), 0);
+        resolve({ response, tokens: totalTokens });
+      });
     });
 
     req.on('error', reject);
