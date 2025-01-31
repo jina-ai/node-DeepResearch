@@ -1,23 +1,5 @@
 import {GoogleGenerativeAI, SchemaType} from "@google/generative-ai";
-import dotenv from 'dotenv';
-import {ProxyAgent, setGlobalDispatcher} from "undici";
-
-// Proxy setup
-if (process.env.https_proxy) {
-  try {
-    const proxyUrl = new URL(process.env.https_proxy).toString();
-    const dispatcher = new ProxyAgent({uri: proxyUrl});
-    setGlobalDispatcher(dispatcher);
-  } catch (error) {
-    console.error('Failed to set proxy:', error);
-  }
-}
-dotenv.config();
-
-const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY not found in environment variables");
-}
+import { GEMINI_API_KEY, MODEL_NAME } from "../config";
 
 type EvaluationResponse = {
     recap: string;
@@ -44,11 +26,9 @@ const responseSchema = {
   required: ["recap", "blame", "improvement"]
 };
 
-const modelName = 'gemini-1.5-flash';
-
-const genAI = new GoogleGenerativeAI(apiKey);
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
-  model: modelName,
+  model: MODEL_NAME,
   generationConfig: {
     temperature: 0,
     responseMimeType: "application/json",
