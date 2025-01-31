@@ -8,6 +8,7 @@ import { evaluateAnswer } from "./tools/evaluator";
 import { StepData } from "./tools/getURLIndex";
 import { analyzeSteps } from "./tools/error-analyzer";
 import { GEMINI_API_KEY, JINA_API_KEY, MODEL_NAME } from "./config";
+import { tokenTracker } from "./utils/token-tracker";
 
 async function sleep(ms: number) {
   const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -358,6 +359,8 @@ ${evaluation.reasoning}
 
 Your journey ends here.
 `);
+          console.info('\x1b[32m%s\x1b[0m', 'Final Answer:', action.answer);
+          tokenTracker.printSummary();
           await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
           return action;
         }
@@ -378,6 +381,8 @@ ${evaluation.reasoning}
 
 Your journey ends here. You have successfully answered the original question. Congratulations! 🎉
 `);
+          console.info('\x1b[32m%s\x1b[0m', 'Final Answer:', action.answer);
+          tokenTracker.printSummary();
           await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
           return action;
           } else {
@@ -525,13 +530,13 @@ You decided to think out of the box or cut from a completely different angle.
     else if (action.action === 'visit' && action.URLTargets?.length) {
         const urlResults = await Promise.all(
           action.URLTargets.map(async (url: string) => {
-            const response = await readUrl(url, JINA_API_KEY);
+            const { response, tokens } = await readUrl(url, JINA_API_KEY);
             allKnowledge.push({
               question: `What is in ${response.data.url}?`,
               answer: removeAllLineBreaks(response.data.content)});
             // remove that url from allURLs
             delete allURLs[url];
-            return {url, result: response};
+            return {url, result: response, tokens};
           })
         );
         diaryContext.push(`
@@ -546,7 +551,7 @@ You found some useful information on the web and add them to your knowledge for 
           result: urlResults
         });
 
-        totalTokens += urlResults.reduce((sum, r) => sum + r.result.data.usage.tokens, 0);
+        totalTokens += urlResults.reduce((sum, r) => sum + r.tokens, 0);
       }
 
     await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
