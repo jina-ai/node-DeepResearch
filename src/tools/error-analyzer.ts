@@ -124,7 +124,7 @@ export async function analyzeSteps(diaryContext: string[]): Promise<{ response: 
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as EvaluationResponse;
-    console.log('\x1b[32m%s\x1b[0m', 'Error analysis:', {
+    console.log('Error analysis:', {
       is_valid: json.blame ? false : true,
       reason: json.blame || 'No issues found'
     });

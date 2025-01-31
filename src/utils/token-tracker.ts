@@ -26,7 +26,7 @@ class TokenTracker extends EventEmitter {
 
   printSummary() {
     const breakdown = this.getUsageBreakdown();
-    console.log('\x1b[32m%s\x1b[0m', 'Token Usage Summary:', {
+    console.log('Token Usage Summary:', {
       total: this.getTotalUsage(),
       breakdown
     });

@@ -36,7 +36,7 @@ export function readUrl(url: string, token: string): Promise<{ response: ReadRes
       res.on('data', (chunk) => responseData += chunk);
       res.on('end', () => {
         const response = JSON.parse(responseData) as ReadResponse;
-        console.log('\x1b[32m%s\x1b[0m', 'Read:', {
+        console.log('Read:', {
           title: response.data.title,
           url: response.data.url,
           tokens: response.data.usage.tokens

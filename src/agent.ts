@@ -336,7 +336,7 @@ ${evaluation.reasoning}
 
 Your journey ends here.
 `);
-          console.log('\x1b[32m%s\x1b[0m', 'Final Answer:', action.answer);
+          console.log('Final Answer:', action.answer);
           tokenTracker.printSummary();
           await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
           return action;
@@ -358,7 +358,7 @@ ${evaluation.reasoning}
 
 Your journey ends here. You have successfully answered the original question. Congratulations! 🎉
 `);
-          console.log('\x1b[32m%s\x1b[0m', 'Final Answer:', action.answer);
+          console.log('Final Answer:', action.answer);
           tokenTracker.printSummary();
           await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
           return action;

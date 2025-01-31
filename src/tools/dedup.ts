@@ -83,7 +83,7 @@ export async function dedupQueries(newQueries: string[], existingQueries: string
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as DedupResponse;
-    console.log('\x1b[32m%s\x1b[0m', 'Dedup:', json.unique_queries);
+    console.log('Dedup:', json.unique_queries);
     const tokens = usage?.totalTokenCount || 0;
     tokenTracker.trackUsage('dedup', tokens);
     return { unique_queries: json.unique_queries, tokens };
