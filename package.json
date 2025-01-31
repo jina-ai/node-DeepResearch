@@ -16,8 +16,11 @@
   "description": "",
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "@types/node-fetch": "^2.6.12",
+    "axios": "^1.7.9",
     "dotenv": "^16.4.7",
     "duck-duck-scrape": "^2.2.7",
+    "node-fetch": "^3.3.2",
     "undici": "^7.3.0"
   },
   "devDependencies": {

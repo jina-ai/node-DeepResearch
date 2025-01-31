@@ -261,7 +261,6 @@ function removeAllLineBreaks(text: string) {
 }
 
 async function getResponse(question: string, tokenBudget: number = 1000000, maxBadAttempts: number = 3) {
-  let totalTokens = 0;
   let step = 0;
   let totalStep = 0;
   let badAttempts = 0;
@@ -272,7 +271,7 @@ async function getResponse(question: string, tokenBudget: number = 1000000, maxB
   const badContext = [];
   let diaryContext = [];
   const allURLs: Record<string, string> = {};
-  while (totalTokens < tokenBudget) {
+  while (tokenTracker.getTotalUsage() < tokenBudget) {
     // add 1s delay to avoid rate limiting
     await sleep(1000);
     step++;
@@ -469,7 +468,7 @@ But then you realized you have asked them before. You decided to to think out of
                 safeSearch: SafeSearchType.STRICT
               });
             } else {
-              const { response } = await braveSearch(query, BRAVE_API_KEY);
+              const { response } = await braveSearch(query);
               results = {
                 results: response.web.results.map(r => ({
                   title: r.title,

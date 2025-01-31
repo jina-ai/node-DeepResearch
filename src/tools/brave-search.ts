@@ -1,4 +1,5 @@
-import https from 'https';
+import axios from 'axios';
+import {BRAVE_API_KEY} from "../config";
 
 interface BraveSearchResponse {
   web: {
@@ -10,34 +11,26 @@ interface BraveSearchResponse {
   };
 }
 
-export function braveSearch(query: string, token: string): Promise<{ response: BraveSearchResponse }> {
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: 'api.search.brave.com',
-      port: 443,
-      path: `/res/v1/web/search?q=${encodeURIComponent(query)}`,
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip',
-        'X-Subscription-Token': token
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let responseData = '';
-      res.on('data', (chunk) => responseData += chunk);
-      res.on('end', () => {
-        const response = JSON.parse(responseData) as BraveSearchResponse;
-        console.log('Brave Search:', response.web.results.map(item => ({
-          title: item.title,
-          url: item.url
-        })));
-        resolve({ response });
-      });
-    });
-
-    req.on('error', reject);
-    req.end();
+export async function braveSearch(query: string): Promise<{ response: BraveSearchResponse }> {
+  const response = await axios.get<BraveSearchResponse>('https://api.search.brave.com/res/v1/web/search', {
+    params: {
+      q: query,
+      count: 5,
+      safesearch: 'off'
+    },
+    headers: {
+      'Accept': 'application/json',
+      'X-Subscription-Token': BRAVE_API_KEY
+    },
+    timeout: 10000
   });
+
+  // Keep the same console.log as the original code
+  console.log('Brave Search:', response.data.web.results.map(item => ({
+    title: item.title,
+    url: item.url
+  })));
+
+  // Maintain the same return structure as the original code
+  return { response: response.data };
 }
