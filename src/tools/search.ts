@@ -33,7 +33,7 @@ export function search(query: string, token: string): Promise<{ response: Search
       res.on('end', () => {
         const response = JSON.parse(responseData) as SearchResponse;
         const totalTokens = response.data.reduce((sum, item) => sum + (item.usage?.tokens || 0), 0);
-        console.info('\x1b[32m%s\x1b[0m', 'Search:', response.data.map(item => ({
+        console.log('\x1b[32m%s\x1b[0m', 'Search:', response.data.map(item => ({
           title: item.title,
           url: item.url,
           tokens: item.usage.tokens

@@ -81,7 +81,7 @@ export async function evaluateAnswer(question: string, answer: string): Promise<
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as EvaluationResponse;
-    console.info('\x1b[32m%s\x1b[0m', 'Evaluation:', {
+    console.log('\x1b[32m%s\x1b[0m', 'Evaluation:', {
       valid: json.is_valid_answer,
       reason: json.reasoning
     });

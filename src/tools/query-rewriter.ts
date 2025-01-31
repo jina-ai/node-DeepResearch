@@ -91,7 +91,7 @@ export async function rewriteQuery(query: string): Promise<{ keywords: string[],
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as KeywordsResponse;
-    console.info('\x1b[32m%s\x1b[0m', 'Query rewriter:', json.keywords)
+    console.log('\x1b[32m%s\x1b[0m', 'Query rewriter:', json.keywords)
     const tokens = usage?.totalTokenCount || 0;
     tokenTracker.trackUsage('query-rewriter', tokens);
     return { keywords: json.keywords, tokens };

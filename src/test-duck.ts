@@ -6,7 +6,7 @@ async function runTest() {
     const results = await search(query, {
       safeSearch: SafeSearchType.STRICT
     });
-    console.info('Search results:', results);
+    console.log('Search results:', results);
   } catch (error) {
     console.error('Test failed:', error);
   }

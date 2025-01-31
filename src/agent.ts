@@ -11,29 +11,9 @@ import { GEMINI_API_KEY, JINA_API_KEY, MODEL_NAME } from "./config";
 import { tokenTracker } from "./utils/token-tracker";
 
 async function sleep(ms: number) {
-  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-  const startTime = Date.now();
-  const endTime = startTime + ms;
-
-  // Clear current line and hide cursor
-  process.stdout.write('\x1B[?25l');
-
-  while (Date.now() < endTime) {
-    const remaining = Math.ceil((endTime - Date.now()) / 1000);
-    const frameIndex = Math.floor(Date.now() / 100) % frames.length;
-
-    // Clear line and write new frame
-    process.stdout.write(`\r${frames[frameIndex]} Cool down... ${remaining}s remaining`);
-
-    // Small delay for animation
-    await new Promise(resolve => setTimeout(resolve, 50));
-  }
-
-  // Clear line, show cursor and move to next line
-  process.stdout.write('\r\x1B[K\x1B[?25h\n');
-
-  // Original sleep
-  await new Promise(resolve => setTimeout(resolve, 0));
+  const seconds = Math.ceil(ms / 1000);
+  console.log(`Waiting ${seconds}s...`);
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 type ResponseSchema = {
@@ -296,7 +276,7 @@ async function getResponse(question: string) {
     await sleep(1000);
     step++;
     totalStep++;
-    console.info(`Step ${totalStep}: Processing ${gaps.length} remaining questions`);
+    console.log(`Step ${totalStep}: Processing ${gaps.length} remaining questions`);
     const allowReflect = gaps.length <= 1;
     // update all urls with buildURLMap
     const allowRead = Object.keys(allURLs).length > 0;
@@ -356,7 +336,7 @@ ${evaluation.reasoning}
 
 Your journey ends here.
 `);
-          console.info('\x1b[32m%s\x1b[0m', 'Final Answer:', action.answer);
+          console.log('\x1b[32m%s\x1b[0m', 'Final Answer:', action.answer);
           tokenTracker.printSummary();
           await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
           return action;
@@ -378,7 +358,7 @@ ${evaluation.reasoning}
 
 Your journey ends here. You have successfully answered the original question. Congratulations! 🎉
 `);
-          console.info('\x1b[32m%s\x1b[0m', 'Final Answer:', action.answer);
+          console.log('\x1b[32m%s\x1b[0m', 'Final Answer:', action.answer);
           tokenTracker.printSummary();
           await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
           return action;
@@ -478,7 +458,7 @@ But then you realized you have asked them before. You decided to to think out of
         if (keywordsQueries.length > 0) {
           const searchResults = [];
           for (const query of keywordsQueries) {
-            console.info(`Search query: ${query}`);
+            console.log(`Search query: ${query}`);
             const results = await search(query, {
               safeSearch: SafeSearchType.STRICT
             });
