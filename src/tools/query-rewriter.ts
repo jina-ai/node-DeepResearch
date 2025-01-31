@@ -90,7 +90,8 @@ export async function rewriteQuery(query: string): Promise<{ keywords: string[],
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as KeywordsResponse;
-    console.log('Rewriter:', json)
+    console.debug('\x1b[36m%s\x1b[0m', 'Query rewriter intermediate result:', json);
+    console.info('\x1b[32m%s\x1b[0m', 'Query rewriter final output:', json.keywords)
     return { keywords: json.keywords, tokens: usage?.totalTokenCount || 0 };
   } catch (error) {
     console.error('Error in query rewriting:', error);

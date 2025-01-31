@@ -82,7 +82,8 @@ export async function dedupQueries(newQueries: string[], existingQueries: string
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as DedupResponse;
-    console.log('Dedup:', json);
+    console.debug('\x1b[36m%s\x1b[0m', 'Dedup intermediate result:', json);
+    console.info('\x1b[32m%s\x1b[0m', 'Dedup final output:', json.unique_queries);
     return { unique_queries: json.unique_queries, tokens: usage?.totalTokenCount || 0 };
   } catch (error) {
     console.error('Error in deduplication analysis:', error);

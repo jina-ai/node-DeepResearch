@@ -80,7 +80,11 @@ export async function evaluateAnswer(question: string, answer: string): Promise<
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as EvaluationResponse;
-    console.log('Evaluation:', json);
+    console.debug('\x1b[36m%s\x1b[0m', 'Evaluation intermediate result:', json);
+    console.info('\x1b[32m%s\x1b[0m', 'Evaluation final output:', {
+      valid: json.is_valid_answer,
+      reason: json.reasoning
+    });
     return { response: json, tokens: usage?.totalTokenCount || 0 };
   } catch (error) {
     console.error('Error in answer evaluation:', error);
