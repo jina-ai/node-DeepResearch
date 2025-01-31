@@ -1,13 +1,14 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { readUrl } from "./tools/read";
 import fs from 'fs/promises';
-import { SafeSearchType, search } from "duck-duck-scrape";
+import { SafeSearchType, search as duckSearch } from "duck-duck-scrape";
+import { braveSearch } from "./tools/brave-search";
 import { rewriteQuery } from "./tools/query-rewriter";
 import { dedupQueries } from "./tools/dedup";
 import { evaluateAnswer } from "./tools/evaluator";
 import { StepData } from "./tools/getURLIndex";
 import { analyzeSteps } from "./tools/error-analyzer";
-import { GEMINI_API_KEY, JINA_API_KEY, MODEL_NAME } from "./config";
+import { GEMINI_API_KEY, JINA_API_KEY, MODEL_NAME, BRAVE_API_KEY, SEARCH_PROVIDER } from "./config";
 import { tokenTracker } from "./utils/token-tracker";
 
 async function sleep(ms: number) {
@@ -462,9 +463,21 @@ But then you realized you have asked them before. You decided to to think out of
           const searchResults = [];
           for (const query of keywordsQueries) {
             console.log(`Search query: ${query}`);
-            const results = await search(query, {
-              safeSearch: SafeSearchType.STRICT
-            });
+            let results;
+            if (SEARCH_PROVIDER === 'duck') {
+              results = await duckSearch(query, {
+                safeSearch: SafeSearchType.STRICT
+              });
+            } else {
+              const { response } = await braveSearch(query, BRAVE_API_KEY);
+              results = {
+                results: response.web.results.map(r => ({
+                  title: r.title,
+                  url: r.url,
+                  description: r.description
+                }))
+              };
+            }
             const minResults = results.results.map(r => ({
               title: r.title,
               url: r.url,
