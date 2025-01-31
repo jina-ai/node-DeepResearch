@@ -83,8 +83,7 @@ export async function dedupQueries(newQueries: string[], existingQueries: string
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as DedupResponse;
-    console.debug('\x1b[36m%s\x1b[0m', 'Dedup intermediate result:', json);
-    console.info('\x1b[32m%s\x1b[0m', 'Dedup final output:', json.unique_queries);
+    console.info('\x1b[32m%s\x1b[0m', 'Dedup:', json.unique_queries);
     const tokens = usage?.totalTokenCount || 0;
     tokenTracker.trackUsage('dedup', tokens);
     return { unique_queries: json.unique_queries, tokens };
@@ -99,12 +98,8 @@ async function main() {
   const newQueries = process.argv[2] ? JSON.parse(process.argv[2]) : [];
   const existingQueries = process.argv[3] ? JSON.parse(process.argv[3]) : [];
 
-  console.log('\nNew Queries (Set A):', newQueries);
-  console.log('Existing Queries (Set B):', existingQueries);
-
   try {
-    const uniqueQueries = await dedupQueries(newQueries, existingQueries);
-    console.log('Unique Queries:', uniqueQueries);
+    await dedupQueries(newQueries, existingQueries);
   } catch (error) {
     console.error('Failed to deduplicate queries:', error);
   }

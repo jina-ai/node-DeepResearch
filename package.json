@@ -6,7 +6,9 @@
     "build": "tsc",
     "dev": "npx ts-node src/agent.ts",
     "search": "npx ts-node src/test-duck.ts",
-    "rewrite": "npx ts-node src/tools/query-rewriter.ts"
+    "rewrite": "npx ts-node src/tools/query-rewriter.ts",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +22,9 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.10",
+    "@typescript-eslint/eslint-plugin": "^7.0.1",
+    "@typescript-eslint/parser": "^7.0.1",
+    "eslint": "^8.56.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   }

@@ -91,8 +91,7 @@ export async function rewriteQuery(query: string): Promise<{ keywords: string[],
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as KeywordsResponse;
-    console.debug('\x1b[36m%s\x1b[0m', 'Query rewriter intermediate result:', json);
-    console.info('\x1b[32m%s\x1b[0m', 'Query rewriter final output:', json.keywords)
+    console.info('\x1b[32m%s\x1b[0m', 'Query rewriter:', json.keywords)
     const tokens = usage?.totalTokenCount || 0;
     tokenTracker.trackUsage('query-rewriter', tokens);
     return { keywords: json.keywords, tokens };
@@ -106,10 +105,8 @@ export async function rewriteQuery(query: string): Promise<{ keywords: string[],
 async function main() {
   const query = process.argv[2] || "";
 
-  console.log('\nOriginal Query:', query);
   try {
-    const keywords = await rewriteQuery(query);
-    console.log('Rewritten Keywords:', keywords);
+    await rewriteQuery(query);
   } catch (error) {
     console.error('Failed to rewrite query:', error);
   }

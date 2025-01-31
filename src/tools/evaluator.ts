@@ -81,8 +81,7 @@ export async function evaluateAnswer(question: string, answer: string): Promise<
     const response = await result.response;
     const usage = response.usageMetadata;
     const json = JSON.parse(response.text()) as EvaluationResponse;
-    console.debug('\x1b[36m%s\x1b[0m', 'Evaluation intermediate result:', json);
-    console.info('\x1b[32m%s\x1b[0m', 'Evaluation final output:', {
+    console.info('\x1b[32m%s\x1b[0m', 'Evaluation:', {
       valid: json.is_valid_answer,
       reason: json.reasoning
     });
@@ -105,12 +104,8 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('\nQuestion:', question);
-  console.log('Answer:', answer);
-
   try {
-    const evaluation = await evaluateAnswer(question, answer);
-    console.log('\nEvaluation Result:', evaluation);
+    await evaluateAnswer(question, answer);
   } catch (error) {
     console.error('Failed to evaluate answer:', error);
   }
