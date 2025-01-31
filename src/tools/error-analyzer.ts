@@ -1,5 +1,6 @@
 import {GoogleGenerativeAI, SchemaType} from "@google/generative-ai";
 import { GEMINI_API_KEY, MODEL_NAME } from "../config";
+import { tokenTracker } from "../utils/token-tracker";
 
 type EvaluationResponse = {
     recap: string;
@@ -128,7 +129,9 @@ export async function analyzeSteps(diaryContext: string[]): Promise<{ response: 
       is_valid: json.blame ? false : true,
       reason: json.blame || 'No issues found'
     });
-    return { response: json, tokens: usage?.totalTokenCount || 0 };
+    const tokens = usage?.totalTokenCount || 0;
+    tokenTracker.trackUsage('error-analyzer', tokens);
+    return { response: json, tokens };
   } catch (error) {
     console.error('Error in answer evaluation:', error);
     throw error;

@@ -1,5 +1,6 @@
 import {GoogleGenerativeAI, SchemaType} from "@google/generative-ai";
 import { GEMINI_API_KEY, MODEL_NAME } from "../config";
+import { tokenTracker } from "../utils/token-tracker";
 
 type KeywordsResponse = {
   keywords: string[];
@@ -92,7 +93,9 @@ export async function rewriteQuery(query: string): Promise<{ keywords: string[],
     const json = JSON.parse(response.text()) as KeywordsResponse;
     console.debug('\x1b[36m%s\x1b[0m', 'Query rewriter intermediate result:', json);
     console.info('\x1b[32m%s\x1b[0m', 'Query rewriter final output:', json.keywords)
-    return { keywords: json.keywords, tokens: usage?.totalTokenCount || 0 };
+    const tokens = usage?.totalTokenCount || 0;
+    tokenTracker.trackUsage('query-rewriter', tokens);
+    return { keywords: json.keywords, tokens };
   } catch (error) {
     console.error('Error in query rewriting:', error);
     throw error;

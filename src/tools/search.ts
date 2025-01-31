@@ -1,4 +1,5 @@
 import https from 'https';
+import { tokenTracker } from "../utils/token-tracker";
 
 interface SearchResponse {
   code: number;
@@ -38,6 +39,7 @@ export function search(query: string, token: string): Promise<{ response: Search
           url: item.url,
           tokens: item.usage.tokens
         })));
+        tokenTracker.trackUsage('search', totalTokens);
         resolve({ response, tokens: totalTokens });
       });
     });

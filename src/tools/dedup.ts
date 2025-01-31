@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GEMINI_API_KEY, MODEL_NAME } from "../config";
+import { tokenTracker } from "../utils/token-tracker";
 
 type DedupResponse = {
   thought: string;
@@ -84,7 +85,9 @@ export async function dedupQueries(newQueries: string[], existingQueries: string
     const json = JSON.parse(response.text()) as DedupResponse;
     console.debug('\x1b[36m%s\x1b[0m', 'Dedup intermediate result:', json);
     console.info('\x1b[32m%s\x1b[0m', 'Dedup final output:', json.unique_queries);
-    return { unique_queries: json.unique_queries, tokens: usage?.totalTokenCount || 0 };
+    const tokens = usage?.totalTokenCount || 0;
+    tokenTracker.trackUsage('dedup', tokens);
+    return { unique_queries: json.unique_queries, tokens };
   } catch (error) {
     console.error('Error in deduplication analysis:', error);
     throw error;
