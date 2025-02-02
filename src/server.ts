@@ -73,7 +73,7 @@ app.post('/api/v1/query', (async (req: QueryRequest, res: Response) => {
       if (message.includes('Step') || message.includes('Budget used')) {
         const step = parseInt(message.match(/Step (\d+)/)?.[1] || '0');
         const budgetPercentage = message.match(/Budget used ([\d.]+)%/)?.[1];
-        const budget = budgetPercentage ? {
+        const budgetInfo = budgetPercentage ? {
           used: tokenTracker.getTotalUsage(),
           total: budget || 1_000_000,
           percentage: budgetPercentage
@@ -83,7 +83,7 @@ app.post('/api/v1/query', (async (req: QueryRequest, res: Response) => {
           type: 'progress',
           data: thisStep || message,
           step,
-          budget
+          budget: budgetInfo
         });
       }
     };
