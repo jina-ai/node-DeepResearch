@@ -7,7 +7,7 @@ import {rewriteQuery} from "./tools/query-rewriter";
 import {dedupQueries} from "./tools/dedup";
 import {evaluateAnswer} from "./tools/evaluator";
 import {analyzeSteps} from "./tools/error-analyzer";
-import {GEMINI_API_KEY, JINA_API_KEY, MODEL_NAME, SEARCH_PROVIDER, STEP_SLEEP} from "./config";
+import {GEMINI_API_KEY, JINA_API_KEY, SEARCH_PROVIDER, STEP_SLEEP, modelConfigs} from "./config";
 import {tokenTracker} from "./utils/token-tracker";
 import {StepAction, SchemaProperty, ResponseSchema} from "./types";
 
@@ -291,9 +291,9 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
       );
 
     const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
+      model: modelConfigs.agent.model,
       generationConfig: {
-        temperature: 0.7,
+        temperature: modelConfigs.agent.temperature,
         responseMimeType: "application/json",
         responseSchema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch)
       }
@@ -610,9 +610,9 @@ You decided to think out of the box or cut from a completely different angle.`);
       );
 
     const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
+      model: modelConfigs.agentBeastMode.model,
       generationConfig: {
-        temperature: 0.7,
+        temperature: modelConfigs.agentBeastMode.temperature,
         responseMimeType: "application/json",
         responseSchema: getSchema(false, false, allowAnswer, false)
       }

@@ -1,6 +1,5 @@
 import dotenv from 'dotenv';
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
-import { GenerationConfig } from '@google/generative-ai';
 
 interface ModelConfig {
   model: string;
@@ -12,6 +11,8 @@ interface ToolConfigs {
   evaluator: ModelConfig;
   errorAnalyzer: ModelConfig;
   queryRewriter: ModelConfig;
+  agent: ModelConfig;
+  agentBeastMode: ModelConfig;
 }
 
 
@@ -54,6 +55,14 @@ export const modelConfigs: ToolConfigs = {
   queryRewriter: {
     ...defaultConfig,
     temperature: 0.1
+  },
+  agent: {
+    ...defaultConfig,
+    temperature: 0.7
+  },
+  agentBeastMode: {
+    ...defaultConfig,
+    temperature: 0.7
   }
 };
 
