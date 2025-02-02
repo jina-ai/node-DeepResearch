@@ -1,24 +1,6 @@
-interface SearchResult {
-  title: string;
-  url: string;
-  description: string;
-}
+import { SearchResult, QueryResult, StepData } from '../types';
 
-interface QueryResult {
-  query: string;
-  results: SearchResult[];
-}
-
-export interface StepData {
-  step: number;
-  question: string;
-  action: string;
-  reasoning: string;
-  searchQuery?: string;
-  result?: QueryResult[];
-}
-
-export function buildURLMap(data: StepData[]): Record<string, string> {
+export function buildURLMap(data: StepData[]): Record<string, SearchResult['url'], QueryResult['query']> {
   const urlMap: Record<string, string> = {};
 
   data.forEach(step => {

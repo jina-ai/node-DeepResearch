@@ -2,10 +2,7 @@ import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GEMINI_API_KEY, MODEL_NAME } from "../config";
 import { tokenTracker } from "../utils/token-tracker";
 
-type EvaluationResponse = {
-  is_definitive: boolean;
-  reasoning: string;
-};
+import { EvaluationResponse } from '../types';
 
 const responseSchema = {
   type: SchemaType.OBJECT,

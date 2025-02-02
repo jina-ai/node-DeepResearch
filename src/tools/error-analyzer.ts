@@ -2,11 +2,7 @@ import {GoogleGenerativeAI, SchemaType} from "@google/generative-ai";
 import { GEMINI_API_KEY, MODEL_NAME } from "../config";
 import { tokenTracker } from "../utils/token-tracker";
 
-type EvaluationResponse = {
-    recap: string;
-    blame: string;
-    improvement: string;
-};
+import { ErrorAnalysisResponse } from '../types';
 
 const responseSchema = {
   type: SchemaType.OBJECT,
@@ -117,13 +113,13 @@ ${diaryContext.join('\n')}
 `;
 }
 
-export async function analyzeSteps(diaryContext: string[]): Promise<{ response: EvaluationResponse, tokens: number }> {
+export async function analyzeSteps(diaryContext: string[]): Promise<{ response: ErrorAnalysisResponse, tokens: number }> {
   try {
     const prompt = getPrompt(diaryContext);
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const usage = response.usageMetadata;
-    const json = JSON.parse(response.text()) as EvaluationResponse;
+    const json = JSON.parse(response.text()) as ErrorAnalysisResponse;
     console.log('Error analysis:', {
       is_valid: !json.blame,
       reason: json.blame || 'No issues found'

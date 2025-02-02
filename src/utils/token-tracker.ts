@@ -1,9 +1,6 @@
 import { EventEmitter } from 'events';
 
-interface TokenUsage {
-  tool: string;
-  tokens: number;
-}
+import { TokenUsage } from '../types';
 
 class TokenTracker extends EventEmitter {
   private usages: TokenUsage[] = [];

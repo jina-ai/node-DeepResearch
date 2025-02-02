@@ -1,15 +1,7 @@
 import axios from 'axios';
 import {BRAVE_API_KEY} from "../config";
 
-interface BraveSearchResponse {
-  web: {
-    results: Array<{
-      title: string;
-      description: string;
-      url: string;
-    }>;
-  };
-}
+import { BraveSearchResponse } from '../types';
 
 export async function braveSearch(query: string): Promise<{ response: BraveSearchResponse }> {
   const response = await axios.get<BraveSearchResponse>('https://api.search.brave.com/res/v1/web/search', {

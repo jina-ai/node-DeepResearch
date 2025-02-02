@@ -3,10 +3,7 @@ import { GEMINI_API_KEY, MODEL_NAME } from "../config";
 import { tokenTracker } from "../utils/token-tracker";
 import { SearchAction } from "../types";
 
-type KeywordsResponse = {
-  thought: string;
-  queries: string[];
-};
+import { KeywordsResponse } from '../types';
 
 const responseSchema = {
   type: SchemaType.OBJECT,

@@ -9,34 +9,13 @@ import {evaluateAnswer} from "./tools/evaluator";
 import {analyzeSteps} from "./tools/error-analyzer";
 import {GEMINI_API_KEY, JINA_API_KEY, MODEL_NAME, SEARCH_PROVIDER, STEP_SLEEP} from "./config";
 import {tokenTracker} from "./utils/token-tracker";
-import {StepAction} from "./types";
+import {StepAction, SchemaProperty, ResponseSchema} from "./types";
 
 async function sleep(ms: number) {
   const seconds = Math.ceil(ms / 1000);
   console.log(`Waiting ${seconds}s...`);
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
-type SchemaProperty = {
-  type: SchemaType;
-  description: string;
-  enum?: string[];
-  items?: {
-    type: SchemaType;
-    description?: string;
-    properties?: Record<string, SchemaProperty>;
-    required?: string[];
-  };
-  properties?: Record<string, SchemaProperty>;
-  required?: string[];
-  maxItems?: number;
-};
-
-type ResponseSchema = {
-  type: SchemaType;
-  properties: Record<string, SchemaProperty>;
-  required: string[];
-};
 
 function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boolean, allowSearch: boolean): ResponseSchema {
   const actions: string[] = [];

@@ -1,17 +1,7 @@
 import https from 'https';
 import { tokenTracker } from "../utils/token-tracker";
 
-interface SearchResponse {
-  code: number;
-  status: number;
-  data: Array<{
-    title: string;
-    description: string;
-    url: string;
-    content: string;
-    usage: { tokens: number; };
-  }>;
-}
+import { SearchResponse } from '../types';
 
 export function search(query: string, token: string): Promise<{ response: SearchResponse, tokens: number }> {
   return new Promise((resolve, reject) => {

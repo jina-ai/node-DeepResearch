@@ -1,17 +1,7 @@
 import https from 'https';
 import { tokenTracker } from "../utils/token-tracker";
 
-interface ReadResponse {
-  code: number;
-  status: number;
-  data: {
-    title: string;
-    description: string;
-    url: string;
-    content: string;
-    usage: { tokens: number; };
-  };
-}
+import { ReadResponse } from '../types';
 
 export function readUrl(url: string, token: string): Promise<{ response: ReadResponse, tokens: number }> {
   return new Promise((resolve, reject) => {
