@@ -134,3 +134,14 @@ export type ResponseSchema = {
   properties: Record<string, SchemaProperty>;
   required: string[];
 };
+
+export interface StreamMessage {
+  type: 'progress' | 'answer' | 'error';
+  data: string | StepAction;
+  step?: number;
+  budget?: {
+    used: number;
+    total: number;
+    percentage: string;
+  };
+}
