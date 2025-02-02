@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GEMINI_API_KEY, modelConfigs } from "../config";
-import { tokenTracker } from "../utils/token-tracker";
+import { TokenTracker } from "../utils/token-tracker";
 
 import { DedupResponse } from '../types';
 
@@ -110,7 +110,7 @@ Set A: ${JSON.stringify(newQueries)}
 Set B: ${JSON.stringify(existingQueries)}`;
 }
 
-export async function dedupQueries(newQueries: string[], existingQueries: string[]): Promise<{ unique_queries: string[], tokens: number }> {
+export async function dedupQueries(newQueries: string[], existingQueries: string[], tracker?: TokenTracker): Promise<{ unique_queries: string[], tokens: number }> {
   try {
     const prompt = getPrompt(newQueries, existingQueries);
     const result = await model.generateContent(prompt);
@@ -119,7 +119,7 @@ export async function dedupQueries(newQueries: string[], existingQueries: string
     const json = JSON.parse(response.text()) as DedupResponse;
     console.log('Dedup:', json.unique_queries);
     const tokens = usage?.totalTokenCount || 0;
-    tokenTracker.trackUsage('dedup', tokens);
+    (tracker || new TokenTracker()).trackUsage('dedup', tokens);
     return { unique_queries: json.unique_queries, tokens };
   } catch (error) {
     console.error('Error in deduplication analysis:', error);
