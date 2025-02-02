@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, RequestHandler } from 'express';
 import cors from 'cors';
 import { EventEmitter } from 'events';
 import { getResponse } from './agent';
@@ -25,7 +25,7 @@ interface StreamResponse extends Response {
 }
 
 // SSE endpoint for progress updates
-app.get('/stream/:requestId', (req: Request, res: StreamResponse) => {
+app.get('/stream/:requestId', ((req: Request, res: StreamResponse) => {
   const requestId = req.params.requestId;
   
   res.setHeader('Content-Type', 'text/event-stream');
@@ -41,10 +41,10 @@ app.get('/stream/:requestId', (req: Request, res: StreamResponse) => {
   req.on('close', () => {
     eventEmitter.removeListener(`progress-${requestId}`, listener);
   });
-});
+}) as RequestHandler);
 
 // POST endpoint to handle questions
-app.post('/ask', async (req: AskRequest, res: Response) => {
+app.post('/ask', (async (req: AskRequest, res: Response) => {
   const { question } = req.body;
   if (!question) {
     return res.status(400).json({ error: 'Question is required' });
@@ -73,7 +73,7 @@ app.post('/ask', async (req: AskRequest, res: Response) => {
   } finally {
     console.log = originalConsoleLog;
   }
-});
+}) as RequestHandler);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
