@@ -9,6 +9,7 @@ import {evaluateAnswer} from "./tools/evaluator";
 import {analyzeSteps} from "./tools/error-analyzer";
 import {GEMINI_API_KEY, JINA_API_KEY, SEARCH_PROVIDER, STEP_SLEEP, modelConfigs} from "./config";
 import {tokenTracker} from "./utils/token-tracker";
+import {actionTracker} from "./utils/action-tracker";
 import {StepAction, SchemaProperty, ResponseSchema, AnswerAction} from "./types";
 
 async function sleep(ms: number) {
@@ -242,6 +243,9 @@ function removeAllLineBreaks(text: string) {
 }
 
 export async function getResponse(question: string, tokenBudget: number = 1_000_000, maxBadAttempts: number = 3): Promise<StepAction> {
+  tokenTracker.reset();
+  actionTracker.reset();
+  actionTracker.trackAction({ gaps: [question], totalStep: 0, badAttempts: 0 });
   let step = 0;
   let totalStep = 0;
   let badAttempts = 0;
@@ -266,6 +270,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
     await sleep(STEP_SLEEP);
     step++;
     totalStep++;
+    actionTracker.trackAction({ totalStep, thisStep, gaps, badAttempts });
     const budgetPercentage = (tokenTracker.getTotalUsage() / tokenBudget * 100).toFixed(2);
     console.log(`Step ${totalStep} / Budget used ${budgetPercentage}%`);
     console.log('Gaps:', gaps);
