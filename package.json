@@ -8,7 +8,8 @@
     "search": "npx ts-node src/test-duck.ts",
     "rewrite": "npx ts-node src/tools/query-rewriter.ts",
     "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix"
+    "lint:fix": "eslint . --ext .ts --fix",
+    "serve": "ts-node src/server.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,10 +17,14 @@
   "description": "",
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "@types/node-fetch": "^2.6.12",
     "axios": "^1.7.9",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "duck-duck-scrape": "^2.2.7",
+    "express": "^4.21.2",
     "node-fetch": "^3.3.2",
     "undici": "^7.3.0"
   },

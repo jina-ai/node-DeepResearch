@@ -241,7 +241,7 @@ function removeAllLineBreaks(text: string) {
   return text.replace(/(\r\n|\n|\r)/gm, " ");
 }
 
-async function getResponse(question: string, tokenBudget: number = 1_000_000, maxBadAttempts: number = 3) {
+export async function getResponse(question: string, tokenBudget: number = 1_000_000, maxBadAttempts: number = 3) {
   let step = 0;
   let totalStep = 0;
   let badAttempts = 0;
