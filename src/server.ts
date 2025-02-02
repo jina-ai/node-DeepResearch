@@ -14,9 +14,11 @@ app.use(express.json());
 const eventEmitter = new EventEmitter();
 
 // Type definitions
-interface AskRequest extends Request {
+interface QueryRequest extends Request {
   body: {
-    question: string;
+    q: string;
+    budget?: number;
+    maxBadAttempt?: number;
   };
 }
 
@@ -25,7 +27,7 @@ interface StreamResponse extends Response {
 }
 
 // SSE endpoint for progress updates
-app.get('/stream/:requestId', ((req: Request, res: StreamResponse) => {
+app.get('/api/v1/stream/:requestId', ((req: Request, res: StreamResponse) => {
   const requestId = req.params.requestId;
   
   res.setHeader('Content-Type', 'text/event-stream');
@@ -44,10 +46,10 @@ app.get('/stream/:requestId', ((req: Request, res: StreamResponse) => {
 }) as RequestHandler);
 
 // POST endpoint to handle questions
-app.post('/ask', (async (req: AskRequest, res: Response) => {
-  const { question } = req.body;
-  if (!question) {
-    return res.status(400).json({ error: 'Question is required' });
+app.post('/api/v1/query', (async (req: QueryRequest, res: Response) => {
+  const { q, budget, maxBadAttempt } = req.body;
+  if (!q) {
+    return res.status(400).json({ error: 'Query (q) is required' });
   }
 
   const requestId = Date.now().toString();
@@ -66,7 +68,7 @@ app.post('/ask', (async (req: AskRequest, res: Response) => {
       }
     };
 
-    const result = await getResponse(question);
+    const result = await getResponse(q, budget, maxBadAttempt);
     eventEmitter.emit(`progress-${requestId}`, { type: 'answer', data: result });
   } catch (error: any) {
     eventEmitter.emit(`progress-${requestId}`, { type: 'error', data: error?.message || 'Unknown error' });

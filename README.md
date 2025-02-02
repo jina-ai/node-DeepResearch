@@ -26,12 +26,16 @@ npm run serve
 
 The server will start on http://localhost:3000 with the following endpoints:
 
-### POST /ask
-Submit a question to be answered:
+### POST /api/v1/query
+Submit a query to be answered:
 ```bash
-curl -X POST http://localhost:3000/ask \
+curl -X POST http://localhost:3000/api/v1/query \
   -H "Content-Type: application/json" \
-  -d '{"question": "what is the capital of France?"}'
+  -d '{
+    "q": "what is the capital of France?",
+    "budget": 1000000,
+    "maxBadAttempt": 3
+  }'
 ```
 
 Response:
@@ -41,10 +45,10 @@ Response:
 }
 ```
 
-### GET /stream/:requestId
+### GET /api/v1/stream/:requestId
 Connect to the Server-Sent Events stream to receive progress updates and the final answer:
 ```bash
-curl -N http://localhost:3000/stream/1234567890
+curl -N http://localhost:3000/api/v1/stream/1234567890
 ```
 
 The server will emit the following event types:
