@@ -1,9 +1,9 @@
 import https from 'https';
-import { tokenTracker } from "../utils/token-tracker";
+import { TokenTracker } from "../utils/token-tracker";
 
 import { SearchResponse } from '../types';
 
-export function search(query: string, token: string): Promise<{ response: SearchResponse, tokens: number }> {
+export function search(query: string, token: string, tracker?: TokenTracker): Promise<{ response: SearchResponse, tokens: number }> {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 's.jina.ai',
@@ -28,7 +28,7 @@ export function search(query: string, token: string): Promise<{ response: Search
           url: item.url,
           tokens: item.usage.tokens
         })));
-        tokenTracker.trackUsage('search', totalTokens);
+        (tracker || new TokenTracker()).trackUsage('search', totalTokens);
         resolve({ response, tokens: totalTokens });
       });
     });

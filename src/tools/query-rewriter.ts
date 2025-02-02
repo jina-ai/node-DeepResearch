@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GEMINI_API_KEY, modelConfigs } from "../config";
-import { tokenTracker } from "../utils/token-tracker";
+import { TokenTracker } from "../utils/token-tracker";
 import { SearchAction } from "../types";
 
 import { KeywordsResponse } from '../types';
@@ -105,7 +105,7 @@ Intention: ${action.thoughts}
 `;
 }
 
-export async function rewriteQuery(action: SearchAction): Promise<{ queries: string[], tokens: number }> {
+export async function rewriteQuery(action: SearchAction, tracker?: TokenTracker): Promise<{ queries: string[], tokens: number }> {
   try {
     const prompt = getPrompt(action);
     const result = await model.generateContent(prompt);
@@ -115,7 +115,7 @@ export async function rewriteQuery(action: SearchAction): Promise<{ queries: str
 
     console.log('Query rewriter:', json.queries);
     const tokens = usage?.totalTokenCount || 0;
-    tokenTracker.trackUsage('query-rewriter', tokens);
+    (tracker || new TokenTracker()).trackUsage('query-rewriter', tokens);
 
     return { queries: json.queries, tokens };
   } catch (error) {

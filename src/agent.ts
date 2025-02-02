@@ -8,9 +8,10 @@ import {dedupQueries} from "./tools/dedup";
 import {evaluateAnswer} from "./tools/evaluator";
 import {analyzeSteps} from "./tools/error-analyzer";
 import {GEMINI_API_KEY, JINA_API_KEY, SEARCH_PROVIDER, STEP_SLEEP, modelConfigs} from "./config";
-import {tokenTracker} from "./utils/token-tracker";
-import {actionTracker} from "./utils/action-tracker";
+import {TokenTracker} from "./utils/token-tracker";
+import {ActionTracker} from "./utils/action-tracker";
 import {StepAction, SchemaProperty, ResponseSchema, AnswerAction} from "./types";
+import {TrackerContext} from "./types/tracker";
 
 async function sleep(ms: number) {
   const seconds = Math.ceil(ms / 1000);
@@ -242,10 +243,12 @@ function removeAllLineBreaks(text: string) {
   return text.replace(/(\r\n|\n|\r)/gm, " ");
 }
 
-export async function getResponse(question: string, tokenBudget: number = 1_000_000, maxBadAttempts: number = 3): Promise<StepAction> {
-  tokenTracker.reset();
-  actionTracker.reset();
-  actionTracker.trackAction({ gaps: [question], totalStep: 0, badAttempts: 0 });
+export async function getResponse(question: string, tokenBudget: number = 1_000_000, maxBadAttempts: number = 3): Promise<{ result: StepAction; context: TrackerContext }> {
+  const context: TrackerContext = {
+    tokenTracker: new TokenTracker(),
+    actionTracker: new ActionTracker()
+  };
+  context.actionTracker.trackAction({ gaps: [question], totalStep: 0, badAttempts: 0 });
   let step = 0;
   let totalStep = 0;
   let badAttempts = 0;
@@ -265,13 +268,13 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
 
   const allURLs: Record<string, string> = {};
   const visitedURLs: string[] = [];
-  while (tokenTracker.getTotalUsage() < tokenBudget && badAttempts <= maxBadAttempts) {
+  while (context.tokenTracker.getTotalUsage() < tokenBudget && badAttempts <= maxBadAttempts) {
     // add 1s delay to avoid rate limiting
     await sleep(STEP_SLEEP);
     step++;
     totalStep++;
-    actionTracker.trackAction({ totalStep, thisStep, gaps, badAttempts });
-    const budgetPercentage = (tokenTracker.getTotalUsage() / tokenBudget * 100).toFixed(2);
+    context.actionTracker.trackAction({ totalStep, thisStep, gaps, badAttempts });
+    const budgetPercentage = (context.tokenTracker.getTotalUsage() / tokenBudget * 100).toFixed(2);
     console.log(`Step ${totalStep} / Budget used ${budgetPercentage}%`);
     console.log('Gaps:', gaps);
     allowReflect = allowReflect && (gaps.length <= 1);
@@ -307,7 +310,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const usage = response.usageMetadata;
-    tokenTracker.trackUsage('agent', usage?.totalTokenCount || 0);
+    context.tokenTracker.trackUsage('agent', usage?.totalTokenCount || 0);
 
 
     thisStep = JSON.parse(response.text());
@@ -330,7 +333,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
         ...thisStep,
       });
 
-      const {response: evaluation} = await evaluateAnswer(currentQuestion, thisStep.answer);
+      const {response: evaluation} = await evaluateAnswer(currentQuestion, thisStep.answer, context.tokenTracker);
 
 
       if (currentQuestion === question) {
@@ -550,7 +553,7 @@ You decided to think out of the box or cut from a completely different angle.
 
         const urlResults = await Promise.all(
           uniqueURLs.map(async (url: string) => {
-            const {response, tokens} = await readUrl(url, JINA_API_KEY);
+            const {response, tokens} = await readUrl(url, JINA_API_KEY, context.tokenTracker);
             allKnowledge.push({
               question: `What is in ${response.data.url}?`,
               answer: removeAllLineBreaks(response.data.content),
@@ -597,7 +600,7 @@ You decided to think out of the box or cut from a completely different angle.`);
   totalStep++;
   await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
   if (isAnswered) {
-    return thisStep;
+    return { result: thisStep, context };
   } else {
     console.log('Enter Beast mode!!!')
     const prompt = getPrompt(
@@ -626,12 +629,12 @@ You decided to think out of the box or cut from a completely different angle.`);
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const usage = response.usageMetadata;
-    tokenTracker.trackUsage('agent', usage?.totalTokenCount || 0);
+    context.tokenTracker.trackUsage('agent', usage?.totalTokenCount || 0);
 
     await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
     thisStep = JSON.parse(response.text());
     console.log(thisStep)
-    return thisStep;
+    return { result: thisStep, context };
   }
 }
 
@@ -653,9 +656,10 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 export async function main() {
   const question = process.argv[2] || "";
-  const finalStep = await getResponse(question) as AnswerAction;
+  const { result: finalStep } = await getResponse(question) as { result: AnswerAction; context: TrackerContext };
   console.log('Final Answer:', finalStep.answer);
-  tokenTracker.printSummary();
+  const tracker = new TokenTracker();
+  tracker.printSummary();
 }
 
 if (require.main === module) {

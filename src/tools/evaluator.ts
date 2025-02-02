@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { GEMINI_API_KEY, modelConfigs } from "../config";
-import { tokenTracker } from "../utils/token-tracker";
+import { TokenTracker } from "../utils/token-tracker";
 
 import { EvaluationResponse } from '../types';
 
@@ -63,7 +63,7 @@ Question: ${JSON.stringify(question)}
 Answer: ${JSON.stringify(answer)}`;
 }
 
-export async function evaluateAnswer(question: string, answer: string): Promise<{ response: EvaluationResponse, tokens: number }> {
+export async function evaluateAnswer(question: string, answer: string, tracker?: TokenTracker): Promise<{ response: EvaluationResponse, tokens: number }> {
   try {
     const prompt = getPrompt(question, answer);
     const result = await model.generateContent(prompt);
@@ -75,7 +75,7 @@ export async function evaluateAnswer(question: string, answer: string): Promise<
       reason: json.reasoning
     });
     const tokens = usage?.totalTokenCount || 0;
-    tokenTracker.trackUsage('evaluator', tokens);
+    (tracker || new TokenTracker()).trackUsage('evaluator', tokens);
     return { response: json, tokens };
   } catch (error) {
     console.error('Error in answer evaluation:', error);

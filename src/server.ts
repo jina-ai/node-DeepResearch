@@ -2,9 +2,8 @@ import express, { Request, Response, RequestHandler } from 'express';
 import cors from 'cors';
 import { EventEmitter } from 'events';
 import { getResponse } from './agent';
-import { tokenTracker } from './utils/token-tracker';
-import { actionTracker } from './utils/action-tracker';
 import { StepAction } from './types';
+import { TrackerContext } from './types/tracker';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -52,13 +51,13 @@ app.get('/api/v1/stream/:requestId', ((req: Request, res: StreamResponse) => {
   });
 }) as RequestHandler);
 
-function createProgressEmitter(requestId: string, budget: number | undefined) {
+function createProgressEmitter(requestId: string, budget: number | undefined, context: TrackerContext) {
   return () => {
-    const state = actionTracker.getState();
+    const state = context.actionTracker.getState();
     const budgetInfo = {
-      used: tokenTracker.getTotalUsage(),
+      used: context.tokenTracker.getTotalUsage(),
       total: budget || 1_000_000,
-      percentage: ((tokenTracker.getTotalUsage() / (budget || 1_000_000)) * 100).toFixed(2)
+      percentage: ((context.tokenTracker.getTotalUsage() / (budget || 1_000_000)) * 100).toFixed(2)
     };
 
     eventEmitter.emit(`progress-${requestId}`, {
@@ -81,10 +80,9 @@ app.post('/api/v1/query', (async (req: QueryRequest, res: Response) => {
   res.json({ requestId });
 
   try {
-    const emitProgress = createProgressEmitter(requestId, budget);
-    actionTracker.on('action', emitProgress);
-    const result = await getResponse(q, budget, maxBadAttempt);
-    actionTracker.removeListener('action', emitProgress);
+    const { result, context } = await getResponse(q, budget, maxBadAttempt);
+    const emitProgress = createProgressEmitter(requestId, budget, context);
+    context.actionTracker.on('action', emitProgress);
     await storeTaskResult(requestId, result);
     eventEmitter.emit(`progress-${requestId}`, { type: 'answer', data: result });
   } catch (error: any) {

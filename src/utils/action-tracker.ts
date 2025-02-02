@@ -8,7 +8,7 @@ interface ActionState {
   totalStep: number;
 }
 
-class ActionTracker extends EventEmitter {
+export class ActionTracker extends EventEmitter {
   private state: ActionState = {
     thisStep: {action: 'answer', answer: '', references: [], thoughts: ''},
     gaps: [],
@@ -34,5 +34,3 @@ class ActionTracker extends EventEmitter {
     };
   }
 }
-
-export const actionTracker = new ActionTracker();

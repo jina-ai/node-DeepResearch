@@ -1,9 +1,9 @@
 import https from 'https';
-import { tokenTracker } from "../utils/token-tracker";
+import { TokenTracker } from "../utils/token-tracker";
 
 import { ReadResponse } from '../types';
 
-export function readUrl(url: string, token: string): Promise<{ response: ReadResponse, tokens: number }> {
+export function readUrl(url: string, token: string, tracker?: TokenTracker): Promise<{ response: ReadResponse, tokens: number }> {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({url});
 
@@ -33,7 +33,7 @@ export function readUrl(url: string, token: string): Promise<{ response: ReadRes
           tokens: response.data.usage.tokens
         });
         const tokens = response.data?.usage?.tokens || 0;
-        tokenTracker.trackUsage('read', tokens);
+        (tracker || new TokenTracker()).trackUsage('read', tokens);
         resolve({ response, tokens });
       });
     });

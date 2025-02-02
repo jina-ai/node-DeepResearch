@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 
 import { TokenUsage } from '../types';
 
-class TokenTracker extends EventEmitter {
+export class TokenTracker extends EventEmitter {
   private usages: TokenUsage[] = [];
 
   trackUsage(tool: string, tokens: number) {
@@ -33,5 +33,3 @@ class TokenTracker extends EventEmitter {
     this.usages = [];
   }
 }
-
-export const tokenTracker = new TokenTracker();
