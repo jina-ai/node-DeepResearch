@@ -27,6 +27,9 @@ export function readUrl(url: string, token: string, tracker?: TokenTracker): Pro
       res.on('data', (chunk) => responseData += chunk);
       res.on('end', () => {
         const response = JSON.parse(responseData) as ReadResponse;
+        if (!response.data) {
+          throw new Error('Invalid response data');
+        }
         console.log('Read:', {
           title: response.data.title,
           url: response.data.url,

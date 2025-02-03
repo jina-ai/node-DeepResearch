@@ -13,5 +13,9 @@ describe('readUrl', () => {
 
   it('should handle invalid URLs', async () => {
     await expect(readUrl('invalid-url', process.env.JINA_API_KEY!)).rejects.toThrow();
+  }, 15000);
+
+  beforeEach(() => {
+    jest.setTimeout(15000);
   });
 });

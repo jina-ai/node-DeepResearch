@@ -11,7 +11,7 @@ import {GEMINI_API_KEY, JINA_API_KEY, SEARCH_PROVIDER, STEP_SLEEP, modelConfigs}
 import {TokenTracker} from "./utils/token-tracker";
 import {ActionTracker} from "./utils/action-tracker";
 import {StepAction, SchemaProperty, ResponseSchema, AnswerAction} from "./types";
-import {TrackerContext} from "./types/tracker";
+import {TrackerContext} from "./types";
 
 async function sleep(ms: number) {
   const seconds = Math.ceil(ms / 1000);
