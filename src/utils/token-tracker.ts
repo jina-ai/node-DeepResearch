@@ -4,8 +4,18 @@ import { TokenUsage } from '../types';
 
 export class TokenTracker extends EventEmitter {
   private usages: TokenUsage[] = [];
+  private budget?: number;
+
+  constructor(budget?: number) {
+    super();
+    this.budget = budget;
+  }
 
   trackUsage(tool: string, tokens: number) {
+    const currentTotal = this.getTotalUsage();
+    if (this.budget && currentTotal + tokens > this.budget) {
+      throw new Error(`Token budget exceeded: ${currentTotal + tokens} > ${this.budget}`);
+    }
     this.usages.push({ tool, tokens });
     this.emit('usage', { tool, tokens });
   }
