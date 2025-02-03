@@ -1,3 +1,3 @@
-process.env.JINA_API_KEY = 'jina_93f13ec7031b43ff9077bbbefa804519ZNLcfuSdw6xCztkUyuBQUzi1UQRs';
-process.env.GOOGLE_API_KEY = 'AIzaSyAaUpc8gHWqB-vqE7ee06x0yaz4dqNATJ4';
-process.env.BRAVE_API_KEY = 'BSA7c9VjrF2V7MFevusI-Bp_uxBfPLm';
+if (!process.env.JINA_API_KEY) throw new Error('JINA_API_KEY environment variable is required');
+if (!process.env.GOOGLE_API_KEY) throw new Error('GOOGLE_API_KEY environment variable is required');
+if (!process.env.BRAVE_API_KEY) throw new Error('BRAVE_API_KEY environment variable is required');
