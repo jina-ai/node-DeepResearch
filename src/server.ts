@@ -29,16 +29,6 @@ interface StreamResponse extends Response {
   write: (chunk: string) => boolean;
 }
 
-async function checkRequestExists(requestId: string): Promise<boolean> {
-  try {
-    const taskPath = path.join(process.cwd(), 'tasks', `${requestId}.json`);
-    await fs.access(taskPath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function createProgressEmitter(requestId: string, budget: number | undefined, context: TrackerContext) {
   return () => {
     const state = context.actionTracker.getState();

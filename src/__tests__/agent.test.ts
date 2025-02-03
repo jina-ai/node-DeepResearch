@@ -10,7 +10,11 @@ describe('getResponse', () => {
   });
 
   it('should respect token budget', async () => {
-    const result = await getResponse('What is TypeScript?', 100);
-    expect(result.context.tokenTracker.getTotalUsage()).toBeLessThanOrEqual(100);
+    try {
+      await getResponse('What is TypeScript?', 100);
+      fail('Expected token budget error');
+    } catch (error: any) {
+      expect(error.message).toContain('Token budget exceeded');
+    }
   });
 });

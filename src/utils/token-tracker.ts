@@ -14,10 +14,14 @@ export class TokenTracker extends EventEmitter {
   trackUsage(tool: string, tokens: number) {
     const currentTotal = this.getTotalUsage();
     if (this.budget && currentTotal + tokens > this.budget) {
+      // Instead of adding tokens and then throwing, we'll throw before adding
       throw new Error(`Token budget exceeded: ${currentTotal + tokens} > ${this.budget}`);
     }
-    this.usages.push({ tool, tokens });
-    this.emit('usage', { tool, tokens });
+    // Only track usage if we're within budget
+    if (!this.budget || currentTotal + tokens <= this.budget) {
+      this.usages.push({ tool, tokens });
+      this.emit('usage', { tool, tokens });
+    }
   }
 
   getTotalUsage(): number {

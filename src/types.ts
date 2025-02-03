@@ -47,7 +47,10 @@ export interface SearchResponse {
     url: string;
     content: string;
     usage: { tokens: number; };
-  }>;
+  }> | null;
+  name?: string;
+  message?: string;
+  readableMessage?: string;
 }
 
 export interface BraveSearchResponse {
@@ -68,13 +71,16 @@ export type DedupResponse = {
 export interface ReadResponse {
   code: number;
   status: number;
-  data: {
+  data?: {
     title: string;
     description: string;
     url: string;
     content: string;
     usage: { tokens: number; };
   };
+  name?: string;
+  message?: string;
+  readableMessage?: string;
 }
 
 export type EvaluationResponse = {

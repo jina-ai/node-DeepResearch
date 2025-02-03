@@ -27,15 +27,24 @@ export function readUrl(url: string, token: string, tracker?: TokenTracker): Pro
       res.on('data', (chunk) => responseData += chunk);
       res.on('end', () => {
         const response = JSON.parse(responseData) as ReadResponse;
-        if (!response.data) {
-          throw new Error('Invalid response data');
+        console.log('Raw read response:', response);
+
+        if (response.code === 402) {
+          reject(new Error(response.readableMessage || 'Insufficient balance'));
+          return;
         }
+
+        if (!response.data) {
+          reject(new Error('Invalid response data'));
+          return;
+        }
+
         console.log('Read:', {
           title: response.data.title,
           url: response.data.url,
-          tokens: response.data.usage.tokens
+          tokens: response.data.usage?.tokens || 0
         });
-        const tokens = response.data?.usage?.tokens || 0;
+        const tokens = response.data.usage?.tokens || 0;
         (tracker || new TokenTracker()).trackUsage('read', tokens);
         resolve({ response, tokens });
       });
