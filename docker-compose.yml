@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JINA_API_KEY=${JINA_API_KEY}
+      - BRAVE_API_KEY=${BRAVE_API_KEY}
+    ports:
+      - "3000:3000"

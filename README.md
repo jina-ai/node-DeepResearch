@@ -88,6 +88,25 @@ data: {"type":"progress","trackers":{"tokenUsage":74950,"tokenBreakdown":{"agent
 data: {"type":"progress","trackers":{"tokenUsage":88096,"tokenBreakdown":{"agent":77777,"read":10319},"actionState":{"action":"search","thoughts":"The provided text mentions several investors in Jina AI's funding rounds but doesn't specify ownership percentages.  A search focusing on equity stakes and ownership percentages held by each investor will provide the necessary information to answer the main question.","URLTargets":[],"answer":"","questionsToAnswer":[],"references":[],"searchQuery":"Jina AI investor equity percentage ownership stake"},"step":8,"badAttempts":0,"gaps":[]}}
 ```
 
+## Docker
+
+### Build Docker Image
+To build the Docker image for the application, run the following command:
+```bash
+docker build -t deepresearch:latest .
+```
+
+### Run Docker Container
+To run the Docker container, use the following command:
+```bash
+docker run -p 3000:3000 --env GEMINI_API_KEY=your_gemini_api_key --env JINA_API_KEY=your_jina_api_key --env BRAVE_API_KEY=your_brave_api_key deepresearch:latest
+```
+
+### Docker Compose
+You can also use Docker Compose to manage multi-container applications. To start the application with Docker Compose, run:
+```bash
+docker-compose up
+```
 
 ## How Does it Work?
 
