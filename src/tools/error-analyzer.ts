@@ -33,6 +33,27 @@ const model = genAI.getGenerativeModel({
   }
 });
 
+let apiCallTimestamps: number[] = [];
+
+async function enforceRateLimit(): Promise<void> {
+  const windowMs = 60000; // 1 minute
+  const rateLimit = 10;
+  const now = Date.now();
+  // Remove timestamps older than windowMs
+  apiCallTimestamps = apiCallTimestamps.filter(timestamp => now - timestamp < windowMs);
+  if (apiCallTimestamps.length >= rateLimit) {
+    const waitTime = windowMs - (now - apiCallTimestamps[0]);
+    console.warn(`Rate limit reached. Waiting for ${waitTime}ms before proceeding.`);
+    await delay(waitTime);
+    return enforceRateLimit();
+  }
+  apiCallTimestamps.push(now);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function getPrompt(diaryContext: string[]): string {
   return `You are an expert at analyzing search and reasoning processes. Your task is to analyze the given sequence of steps and identify what went wrong in the search process.
 
@@ -122,6 +143,7 @@ ${diaryContext.join('\n')}
 }
 
 export async function analyzeSteps(diaryContext: string[], tracker?: TokenTracker): Promise<{ response: ErrorAnalysisResponse, tokens: number }> {
+  await enforceRateLimit();
   try {
     const prompt = getPrompt(diaryContext);
     const result = await model.generateContent(prompt);
