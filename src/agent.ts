@@ -26,40 +26,11 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
   // Since we can't use z.union with Google's API, we'll use a single schema
   // with all possible fields and validate the combinations in runtime
   // We need at least one variant in the union, so we'll use a never schema if no actions are allowed
+  // Base schema for all actions
   const baseSchema = {
     type: z.literal('object'),
     think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action')
   };
-
-  const searchSchema = allowSearch ? z.object({
-    ...baseSchema,
-    action: z.literal('search'),
-    searchQuery: z.string().describe('Only required when choosing \'search\' action, must be a short, keyword-based query that BM25, tf-idf based search engines can understand.')
-  }) : null;
-
-  const answerSchema = allowAnswer ? z.object({
-    ...baseSchema,
-    action: z.literal('answer'),
-    answer: z.string().describe('Only required when choosing \'answer\' action, must be the final answer in natural language'),
-    references: z.array(z.object({
-      exactQuote: z.string().describe('Exact relevant quote from the document'),
-      url: z.string().describe('URL of the document; must be directly from the context')
-    })).describe('Must be an array of references that support the answer, each reference must contain an exact quote and the URL of the document')
-  }) : null;
-
-  const reflectSchema = allowReflect ? z.object({
-    ...baseSchema,
-    action: z.literal('reflect'),
-    questionsToAnswer: z.array(z.string().describe('each question must be a single line, concise and clear. not composite or compound, less than 20 words.')).max(2)
-      .describe('List of most important questions to fill the knowledge gaps of finding the answer to the original question')
-  }) : null;
-
-  const visitSchema = allowRead ? z.object({
-    ...baseSchema,
-    action: z.literal('visit'),
-    URLTargets: z.array(z.string()).max(2)
-      .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
-  }) : null;
 
   const schemas: z.ZodDiscriminatedUnionOption<'action'>[] = [];
 
