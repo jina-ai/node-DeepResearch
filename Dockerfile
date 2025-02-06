@@ -1,29 +1,44 @@
-# Use Node.js 20 as the base image
-FROM node:20
+# ---- BUILD STAGE ----
+FROM node:20-slim AS builder
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --ignore-scripts
 
-# Copy the application code
+# Copy application code
 COPY . .
 
-# Set environment variables
+# Build the application
+RUN npm run build --ignore-scripts
+
+# ---- PRODUCTION STAGE ----
+FROM node:20-slim AS production
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm install --production  --ignore-scripts
+
+# Copy built files from the build stage
+COPY --from=builder /app/dist ./dist
+
+# Set environment variables (Recommended to set at runtime, avoid hardcoding)
 ENV GEMINI_API_KEY=${GEMINI_API_KEY}
 ENV OPENAI_API_KEY=${OPENAI_API_KEY}
 ENV JINA_API_KEY=${JINA_API_KEY}
 ENV BRAVE_API_KEY=${BRAVE_API_KEY}
 
-# Build the application
-RUN npm run build
-
 # Expose the port the app runs on
 EXPOSE 3000
 
-# Set the default command to run the application
-CMD ["npm", "run", "serve"]
+# Set startup command
+CMD ["node", "./dist/server.js"]
