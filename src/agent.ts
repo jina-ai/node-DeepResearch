@@ -23,9 +23,6 @@ async function sleep(ms: number) {
 }
 
 function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boolean, allowSearch: boolean) {
-  // Since we can't use z.union with Google's API, we'll use a single schema
-  // with all possible fields and validate the combinations in runtime
-  // We need at least one variant in the union, so we'll use a never schema if no actions are allowed
   const schemas: z.ZodDiscriminatedUnionOption<'action'>[] = [];
 
   if (allowSearch) {
