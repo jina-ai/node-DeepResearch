@@ -4,6 +4,7 @@ import { generateObject } from 'ai';
 import { modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { ErrorAnalysisResponse } from '../types';
+import { handleGenerateObjectError } from '../utils/error-handling';
 
 const responseSchema = z.object({
   type: z.literal('object'),
@@ -105,17 +106,26 @@ ${diaryContext.join('\n')}
 export async function analyzeSteps(diaryContext: string[], tracker?: TokenTracker): Promise<{ response: ErrorAnalysisResponse, tokens: number }> {
   try {
     const prompt = getPrompt(diaryContext);
-    const { object } = await generateObject({
-      model,
-      schema: responseSchema,
-      prompt,
-      maxTokens: modelConfigs.errorAnalyzer.maxTokens
-    });
+    let object;
+    let tokens = 0;
+    try {
+      const result = await generateObject({
+        model,
+        schema: responseSchema,
+        prompt,
+        maxTokens: modelConfigs.errorAnalyzer.maxTokens
+      });
+      object = result.object;
+      tokens = result.usage?.totalTokens || 0;
+    } catch (error) {
+      const result = await handleGenerateObjectError<ErrorAnalysisResponse>(error, 'error-analyzer');
+      object = result.object;
+      tokens = result.totalTokens;
+    }
     console.log('Error analysis:', {
       is_valid: !object.blame,
       reason: object.blame || 'No issues found'
     });
-    const tokens = 0; // TODO: Token tracking not available in new SDK
     (tracker || new TokenTracker()).trackUsage('error-analyzer', tokens);
     return { response: object, tokens };
   } catch (error) {

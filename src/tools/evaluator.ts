@@ -4,6 +4,7 @@ import { generateObject } from 'ai';
 import { modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { EvaluationResponse } from '../types';
+import { handleGenerateObjectError } from '../utils/error-handling';
 
 const responseSchema = z.object({
   type: z.literal('object'),
@@ -50,12 +51,22 @@ Answer: ${JSON.stringify(answer)}`;
 export async function evaluateAnswer(question: string, answer: string, tracker?: TokenTracker): Promise<{ response: EvaluationResponse, tokens: number }> {
   try {
     const prompt = getPrompt(question, answer);
-    const { object, usage: { totalTokens = 0 } = {} } = await generateObject({
-      model,
-      schema: responseSchema,
-      prompt,
-      maxTokens: modelConfigs.evaluator.maxTokens
-    });
+    let object;
+    let totalTokens = 0;
+    try {
+      const result = await generateObject({
+        model,
+        schema: responseSchema,
+        prompt,
+        maxTokens: modelConfigs.evaluator.maxTokens
+      });
+      object = result.object;
+      totalTokens = result.usage?.totalTokens || 0;
+    } catch (error) {
+      const result = await handleGenerateObjectError<EvaluationResponse>(error, 'evaluator');
+      object = result.object;
+      totalTokens = result.totalTokens;
+    }
     console.log('Evaluation:', {
       definitive: object.is_definitive,
       reason: object.reasoning

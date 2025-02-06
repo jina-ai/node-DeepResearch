@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { generateObject } from 'ai';
 import { modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
+import { handleGenerateObjectError } from '../utils/error-handling';
+import { DedupResponse } from '../types';
 
 
 const responseSchema = z.object({
@@ -69,14 +71,23 @@ SetB: ${JSON.stringify(existingQueries)}`;
 export async function dedupQueries(newQueries: string[], existingQueries: string[], tracker?: TokenTracker): Promise<{ unique_queries: string[], tokens: number }> {
   try {
     const prompt = getPrompt(newQueries, existingQueries);
-    const { object } = await generateObject({
-      model,
-      schema: responseSchema,
-      prompt,
-      maxTokens: modelConfigs.dedup.maxTokens
-    });
+    let object;
+    let tokens = 0;
+    try {
+      const result = await generateObject({
+        model,
+        schema: responseSchema,
+        prompt,
+        maxTokens: modelConfigs.dedup.maxTokens
+      });
+      object = result.object;
+      tokens = result.usage?.totalTokens || 0;
+    } catch (error) {
+      const result = await handleGenerateObjectError<DedupResponse>(error, 'dedup');
+      object = result.object;
+      tokens = result.totalTokens;
+    }
     console.log('Dedup:', object.unique_queries);
-    const tokens = 0; // TODO: Token tracking not available in new SDK
     (tracker || new TokenTracker()).trackUsage('dedup', tokens);
     return { unique_queries: object.unique_queries, tokens };
   } catch (error) {

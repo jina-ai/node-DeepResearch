@@ -2,6 +2,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { readUrl } from "./tools/read";
+import { handleGenerateObjectError } from './utils/error-handling';
 import fs from 'fs/promises';
 import { SafeSearchType, search as duckSearch } from "duck-duck-scrape";
 import { braveSearch } from "./tools/brave-search";
@@ -347,12 +348,22 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
     );
 
     const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agent.model);
-    const { object, usage: { totalTokens = 0 } = {} } = await generateObject({
-      model,
-      schema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch),
-      prompt,
-      maxTokens: modelConfigs.agent.maxTokens
-    });
+    let object;
+    let totalTokens = 0;
+    try {
+      const result = await generateObject({
+        model,
+        schema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch),
+        prompt,
+        maxTokens: modelConfigs.agent.maxTokens
+      });
+      object = result.object;
+      totalTokens = result.usage?.totalTokens || 0;
+    } catch (error) {
+      const result = await handleGenerateObjectError<StepAction>(error, 'agent');
+      object = result.object;
+      totalTokens = result.totalTokens;
+    }
     context.tokenTracker.trackUsage('agent', totalTokens);
     thisStep = object as StepAction;
     // print allowed and chose action
@@ -683,12 +694,22 @@ You decided to think out of the box or cut from a completely different angle.`);
     );
 
     const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agentBeastMode.model);
-    const { object, usage: { totalTokens = 0 } = {} } = await generateObject({
-      model,
-      schema: getSchema(false, false, allowAnswer, false),
-      prompt,
-      maxTokens: modelConfigs.agentBeastMode.maxTokens
-    });
+    let object;
+    let totalTokens = 0;
+    try {
+      const result = await generateObject({
+        model,
+        schema: getSchema(false, false, allowAnswer, false),
+        prompt,
+        maxTokens: modelConfigs.agentBeastMode.maxTokens
+      });
+      object = result.object;
+      totalTokens = result.usage?.totalTokens || 0;
+    } catch (error) {
+      const result = await handleGenerateObjectError<StepAction>(error, 'agent-beast-mode');
+      object = result.object;
+      totalTokens = result.totalTokens;
+    }
     context.tokenTracker.trackUsage('agent', totalTokens);
 
     await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);

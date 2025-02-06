@@ -2,8 +2,9 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
-import { SearchAction } from '../types';
+import { SearchAction, KeywordsResponse } from '../types';
 import { generateObject } from 'ai';
+import { handleGenerateObjectError } from '../utils/error-handling';
 
 const responseSchema = z.object({
   type: z.literal('object'),
@@ -95,17 +96,24 @@ Intention: ${action.think}
 export async function rewriteQuery(action: SearchAction, tracker?: TokenTracker): Promise<{ queries: string[], tokens: number }> {
   try {
     const prompt = getPrompt(action);
-    const { object } = await generateObject({
-      model,
-      schema: responseSchema,
-      prompt,
-      maxTokens: modelConfigs.queryRewriter.maxTokens
-    });
-
+    let object;
+    let tokens = 0;
+    try {
+      const result = await generateObject({
+        model,
+        schema: responseSchema,
+        prompt,
+        maxTokens: modelConfigs.queryRewriter.maxTokens
+      });
+      object = result.object;
+      tokens = result.usage?.totalTokens || 0;
+    } catch (error) {
+      const result = await handleGenerateObjectError<KeywordsResponse>(error, 'query-rewriter');
+      object = result.object;
+      tokens = result.totalTokens;
+    }
     console.log('Query rewriter:', object.queries);
-    const tokens = 0; // TODO: Token tracking not available in new SDK
     (tracker || new TokenTracker()).trackUsage('query-rewriter', tokens);
-
     return { queries: object.queries, tokens };
   } catch (error) {
     console.error('Error in query rewriting:', error);
