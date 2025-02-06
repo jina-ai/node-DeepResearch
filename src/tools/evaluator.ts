@@ -1,29 +1,18 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
-import { LLM_PROVIDER, GEMINI_API_KEY, OPENAI_API_KEY } from "../config";
 import { generateObject } from 'ai';
-import { modelConfigs } from "../config";
+import { modelConfigs, LLM_PROVIDER, getModel } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { EvaluationResponse } from '../types';
 import { handleGenerateObjectError } from '../utils/error-handling';
+
+const model = getModel('evaluator');
 
 const responseSchema = z.object({
   is_definitive: z.boolean().describe('Whether the answer provides a definitive response without uncertainty or \'I don\'t know\' type statements'),
   reasoning: z.string().describe('Explanation of why the answer is or isn\'t definitive')
 });
 
-const getModel = () => {
-  if (LLM_PROVIDER === 'openai') {
-    return createOpenAI({
-      apiKey: OPENAI_API_KEY,
-      compatibility: 'strict'
-    })(modelConfigs[LLM_PROVIDER].evaluator.model);
-  }
-  return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(modelConfigs[LLM_PROVIDER].evaluator.model);
-};
 
-const model = getModel();
 
 function getPrompt(question: string, answer: string): string {
   return `You are an evaluator of answer definitiveness. Analyze if the given answer provides a definitive response or not.

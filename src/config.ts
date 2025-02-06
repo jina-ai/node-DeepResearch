@@ -1,15 +1,18 @@
 import dotenv from 'dotenv';
 import { ProxyAgent, setGlobalDispatcher } from 'undici';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
 
 export type LLMProvider = 'openai' | 'gemini';
+export type ToolName = keyof ToolConfigs;
 
-interface ModelConfig {
+export interface ModelConfig {
   model: string;
   temperature: number;
   maxTokens: number;
 }
 
-interface ToolConfigs {
+export interface ToolConfigs {
   dedup: ModelConfig;
   evaluator: ModelConfig;
   errorAnalyzer: ModelConfig;
@@ -72,6 +75,27 @@ export const modelConfigs: Record<LLMProvider, ToolConfigs> = {
     agentBeastMode: { ...defaultOpenAIConfig, temperature: 0.7 }
   }
 };
+
+export function getModel(toolName: ToolName) {
+  if (!modelConfigs[LLM_PROVIDER][toolName]) {
+    throw new Error(`Invalid tool name: ${toolName}`);
+  }
+
+  if (LLM_PROVIDER === 'openai') {
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY not found');
+    }
+    return createOpenAI({
+      apiKey: OPENAI_API_KEY,
+      compatibility: 'strict'
+    })(modelConfigs[LLM_PROVIDER][toolName].model);
+  }
+
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY not found');
+  }
+  return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(modelConfigs[LLM_PROVIDER][toolName].model);
+}
 
 export const STEP_SLEEP = 1000;
 

@@ -1,12 +1,11 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
-import { LLM_PROVIDER, GEMINI_API_KEY, OPENAI_API_KEY } from "../config";
 import { generateObject } from 'ai';
-import { modelConfigs } from "../config";
+import { modelConfigs, LLM_PROVIDER, getModel } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { ErrorAnalysisResponse } from '../types';
 import { handleGenerateObjectError } from '../utils/error-handling';
+
+const model = getModel('errorAnalyzer');
 
 const responseSchema = z.object({
   recap: z.string().describe('Recap of the actions taken and the steps conducted'),
@@ -14,17 +13,7 @@ const responseSchema = z.object({
   improvement: z.string().describe('Suggested key improvement for the next iteration, do not use bullet points, be concise and hot-take vibe.')
 });
 
-const getModel = () => {
-  if (LLM_PROVIDER === 'openai') {
-    return createOpenAI({
-      apiKey: OPENAI_API_KEY,
-      compatibility: 'strict'
-    })(modelConfigs[LLM_PROVIDER].errorAnalyzer.model);
-  }
-  return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(modelConfigs[LLM_PROVIDER].errorAnalyzer.model);
-};
 
-const model = getModel();
 
 function getPrompt(diaryContext: string[]): string {
   return `You are an expert at analyzing search and reasoning processes. Your task is to analyze the given sequence of steps and identify what went wrong in the search process.

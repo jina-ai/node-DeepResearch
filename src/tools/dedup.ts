@@ -1,29 +1,17 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { modelConfigs, LLM_PROVIDER, GEMINI_API_KEY, OPENAI_API_KEY } from "../config";
+import { modelConfigs, LLM_PROVIDER, getModel } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { handleGenerateObjectError } from '../utils/error-handling';
 import type { DedupResponse } from '../types';
 
-const getModel = () => {
-  if (LLM_PROVIDER === 'openai') {
-    return createOpenAI({
-      apiKey: OPENAI_API_KEY,
-      compatibility: 'strict'
-    })(modelConfigs[LLM_PROVIDER].dedup.model);
-  }
-  return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(modelConfigs[LLM_PROVIDER].dedup.model);
-};
+const model = getModel('dedup');
 
 const responseSchema = z.object({
   think: z.string().describe('Strategic reasoning about the overall deduplication approach'),
   unique_queries: z.array(z.string().describe('Unique query that passed the deduplication process, must be less than 30 characters'))
     .describe('Array of semantically unique queries').max(3)
 });
-
-const model = getModel();
 
 function getPrompt(newQueries: string[], existingQueries: string[]): string {
   return `You are an expert in semantic similarity analysis. Given a set of queries (setA) and a set of queries (setB)

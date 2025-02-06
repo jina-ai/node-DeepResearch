@@ -1,8 +1,6 @@
-import {createGoogleGenerativeAI} from '@ai-sdk/google';
-import {createOpenAI} from '@ai-sdk/openai';
 import {z} from 'zod';
 import {generateObject} from 'ai';
-import {LLM_PROVIDER, GEMINI_API_KEY, OPENAI_API_KEY} from "./config";
+import {LLM_PROVIDER, getModel} from "./config";
 import {readUrl} from "./tools/read";
 import {handleGenerateObjectError} from './utils/error-handling';
 import fs from 'fs/promises';
@@ -327,9 +325,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
       false
     );
 
-    const model = LLM_PROVIDER === 'openai'
-      ? createOpenAI({ apiKey: OPENAI_API_KEY, compatibility: 'strict' })(modelConfigs[LLM_PROVIDER].agent.model)
-      : createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(modelConfigs[LLM_PROVIDER].agent.model);
+    const model = getModel('agent');
     let object;
     let totalTokens = 0;
     try {
@@ -675,9 +671,7 @@ You decided to think out of the box or cut from a completely different angle.`);
       true
     );
 
-    const model = LLM_PROVIDER === 'openai'
-      ? createOpenAI({ apiKey: OPENAI_API_KEY, compatibility: 'strict' })(modelConfigs[LLM_PROVIDER].agentBeastMode.model)
-      : createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(modelConfigs[LLM_PROVIDER].agentBeastMode.model);
+    const model = getModel('agentBeastMode');
     let object;
     let totalTokens = 0;
     try {
