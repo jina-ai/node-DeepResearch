@@ -4,7 +4,7 @@ import { generateObject } from 'ai';
 import { modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { handleGenerateObjectError } from '../utils/error-handling';
-import { DedupResponse } from '../types';
+import type { DedupResponse } from '../types';
 
 
 const responseSchema = z.object({
