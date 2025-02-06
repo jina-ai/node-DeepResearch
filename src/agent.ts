@@ -9,7 +9,7 @@ import { rewriteQuery } from "./tools/query-rewriter";
 import { dedupQueries } from "./tools/dedup";
 import { evaluateAnswer } from "./tools/evaluator";
 import { analyzeSteps } from "./tools/error-analyzer";
-import { GEMINI_API_KEY, SEARCH_PROVIDER, STEP_SLEEP } from "./config";
+import { SEARCH_PROVIDER, STEP_SLEEP, modelConfigs } from "./config";
 import { TokenTracker } from "./utils/token-tracker";
 import { ActionTracker } from "./utils/action-tracker";
 import { StepAction, AnswerAction } from "./types";
@@ -26,85 +26,56 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
   // Since we can't use z.union with Google's API, we'll use a single schema
   // with all possible fields and validate the combinations in runtime
   // We need at least one variant in the union, so we'll use a never schema if no actions are allowed
-  const variants = [
-    // Search action
-    ...(allowSearch ? [z.object({
-      action: z.literal('search'),
-      think: z.string().describe('Explain why choose this action'),
-      searchQuery: z.string().describe('Search query for BM25/tf-idf search engines')
-    })] : []),
-    // Answer action
-    ...(allowAnswer ? [z.object({
-      action: z.literal('answer'),
-      think: z.string().describe('Explain why choose this action'),
-      answer: z.string().describe('Final answer in natural language'),
-      references: z.array(z.object({
-        exactQuote: z.string(),
-        url: z.string()
-      }))
-    })] : []),
-    // Reflect action
-    ...(allowReflect ? [z.object({
-      action: z.literal('reflect'),
-      think: z.string().describe('Explain why choose this action'),
-      questionsToAnswer: z.array(z.string().max(20)).max(2)
-    })] : []),
-    // Visit action
-    ...(allowRead ? [z.object({
-      action: z.literal('visit'),
-      think: z.string().describe('Explain why choose this action'),
-      URLTargets: z.array(z.string()).max(2)
-    })] : [])
-  ];
+  const baseSchema = {
+    type: z.literal('object'),
+    think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action')
+  };
 
-  // Ensure we have at least one variant
-  if (variants.length === 0) {
+  const schemas: z.ZodObject<any>[] = [];
+
+  if (allowSearch) {
+    schemas.push(z.object({
+      ...baseSchema,
+      action: z.literal('search'),
+      searchQuery: z.string().describe('Only required when choosing \'search\' action, must be a short, keyword-based query that BM25, tf-idf based search engines can understand.')
+    }));
+  }
+
+  if (allowAnswer) {
+    schemas.push(z.object({
+      ...baseSchema,
+      action: z.literal('answer'),
+      answer: z.string().describe('Only required when choosing \'answer\' action, must be the final answer in natural language'),
+      references: z.array(z.object({
+        exactQuote: z.string().describe('Exact relevant quote from the document'),
+        url: z.string().describe('URL of the document; must be directly from the context')
+      })).describe('Must be an array of references that support the answer, each reference must contain an exact quote and the URL of the document')
+    }));
+  }
+
+  if (allowReflect) {
+    schemas.push(z.object({
+      ...baseSchema,
+      action: z.literal('reflect'),
+      questionsToAnswer: z.array(z.string().describe('each question must be a single line, concise and clear. not composite or compound, less than 20 words.')).max(2)
+        .describe('List of most important questions to fill the knowledge gaps of finding the answer to the original question')
+    }));
+  }
+
+  if (allowRead) {
+    schemas.push(z.object({
+      ...baseSchema,
+      action: z.literal('visit'),
+      URLTargets: z.array(z.string()).max(2)
+        .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
+    }));
+  }
+
+  if (schemas.length === 0) {
     throw new Error('At least one action type must be allowed');
   }
 
-  // Cast to tuple type with at least one element
-  const variants = [
-    // Search action
-    ...(allowSearch ? [z.object({
-      type: z.literal('object'),
-      action: z.literal('search'),
-      think: z.string(),
-      searchQuery: z.string()
-    })] : []),
-    // Answer action
-    ...(allowAnswer ? [z.object({
-      type: z.literal('object'),
-      action: z.literal('answer'),
-      think: z.string(),
-      answer: z.string(),
-      references: z.array(z.object({
-        exactQuote: z.string(),
-        url: z.string()
-      }))
-    })] : []),
-    // Reflect action
-    ...(allowReflect ? [z.object({
-      type: z.literal('object'),
-      action: z.literal('reflect'),
-      think: z.string(),
-      questionsToAnswer: z.array(z.string()).max(2)
-    })] : []),
-    // Visit action
-    ...(allowRead ? [z.object({
-      type: z.literal('object'),
-      action: z.literal('visit'),
-      think: z.string(),
-      URLTargets: z.array(z.string()).max(2)
-    })] : [])
-  ];
-
-  // Ensure we have at least one variant
-  if (variants.length === 0) {
-    throw new Error('At least one action type must be allowed');
-  }
-
-  // Use discriminated union for schema
-  const schema = z.union(variants);
+  const schema = z.discriminatedUnion('action', schemas);
 
   return schema;
 }
@@ -362,7 +333,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
       false
     );
 
-    const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
+    const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agent.model);
     const { object } = await generateObject({
       model,
       schema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch),
@@ -699,7 +670,7 @@ You decided to think out of the box or cut from a completely different angle.`);
       true
     );
 
-    const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
+    const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agentBeastMode.model);
     const { object } = await generateObject({
       model,
       schema: getSchema(false, false, allowAnswer, false),
