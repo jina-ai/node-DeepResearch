@@ -85,6 +85,7 @@ function getPrompt(
   beastMode?: boolean
 ): string {
   const sections: string[] = [];
+  const actionSections: string[] = [];
 
   // Add header section
   sections.push(`Current date: ${new Date().toUTCString()}
@@ -169,14 +170,13 @@ ${learnedStrategy}
   }
 
   // Build actions section
-  const actions: string[] = [];
 
   if (allURLs && Object.keys(allURLs).length > 0 && allowRead) {
     const urlList = Object.entries(allURLs)
       .map(([url, desc]) => `  + "${url}": "${desc}"`)
       .join('\n');
 
-    actions.push(`
+    actionSections.push(`
 <action-visit>    
 - Visit any URLs from below to gather external knowledge, choose the most relevant URLs that might contain the answer
 <url-list>
@@ -190,7 +190,7 @@ ${urlList}
   }
 
   if (allowSearch) {
-    actions.push(`
+    actionSections.push(`
 <action-search>    
 - Query external sources using a public search engine
 - Focus on solving one specific aspect of the question
@@ -200,7 +200,7 @@ ${urlList}
   }
 
   if (allowAnswer) {
-    actions.push(`
+    actionSections.push(`
 <action-answer>
 - Provide final response only when 100% certain
 - Responses must be definitive (no ambiguity, uncertainty, or disclaimers)${allowReflect ? '\n- If doubts remain, use <action-reflect> instead' : ''}
@@ -209,7 +209,7 @@ ${urlList}
   }
 
   if (beastMode) {
-    actions.push(`
+    actionSections.push(`
 <action-answer>
 - Any answer is better than no answer
 - Partial answers are allowed, but make sure they are based on the context and knowledge you have gathered    
@@ -220,7 +220,7 @@ ${urlList}
   }
 
   if (allowReflect) {
-    actions.push(`
+    actionSections.push(`
 <action-reflect>    
 - Perform critical analysis through hypothetical scenarios or systematic breakdowns
 - Identify knowledge gaps and formulate essential clarifying questions
@@ -236,7 +236,7 @@ ${urlList}
   sections.push(`
 Based on the current context, you must choose one of the following actions:
 <actions>
-${actions.join('\n\n')}
+${actionSections.join('\n\n')}
 </actions>
 `);
 
