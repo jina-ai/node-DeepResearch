@@ -1,5 +1,5 @@
 {
-  "name": "agentic-search",
+  "name": "node-deepresearch",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -14,8 +14,8 @@
     "test:watch": "jest --watch"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Jina AI",
+  "license": "Apache-2.0",
   "description": "",
   "dependencies": {
     "@ai-sdk/google": "^1.0.0",

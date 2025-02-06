@@ -132,9 +132,6 @@ export type KeywordsResponse = {
   queries: string[];
 };
 
-// Schema Types
-export type ResponseSchema = z.ZodType<any>;
-
 export interface StreamMessage {
   type: 'progress' | 'answer' | 'error';
   data: string | StepAction;

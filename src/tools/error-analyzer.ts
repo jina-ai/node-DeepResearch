@@ -7,7 +7,6 @@ import { ErrorAnalysisResponse } from '../types';
 import { handleGenerateObjectError } from '../utils/error-handling';
 
 const responseSchema = z.object({
-  type: z.literal('object'),
   recap: z.string().describe('Recap of the actions taken and the steps conducted'),
   blame: z.string().describe('Which action or the step was the root cause of the answer rejection'),
   improvement: z.string().describe('Suggested key improvement for the next iteration, do not use bullet points, be concise and hot-take vibe.')

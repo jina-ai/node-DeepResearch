@@ -7,7 +7,6 @@ import { EvaluationResponse } from '../types';
 import { handleGenerateObjectError } from '../utils/error-handling';
 
 const responseSchema = z.object({
-  type: z.literal('object'),
   is_definitive: z.boolean().describe('Whether the answer provides a definitive response without uncertainty or \'I don\'t know\' type statements'),
   reasoning: z.string().describe('Explanation of why the answer is or isn\'t definitive')
 });

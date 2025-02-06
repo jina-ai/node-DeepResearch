@@ -1,21 +1,21 @@
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { z } from 'zod';
-import { generateObject } from 'ai';
-import { readUrl } from "./tools/read";
-import { handleGenerateObjectError } from './utils/error-handling';
+import {createGoogleGenerativeAI} from '@ai-sdk/google';
+import {z} from 'zod';
+import {generateObject} from 'ai';
+import {readUrl} from "./tools/read";
+import {handleGenerateObjectError} from './utils/error-handling';
 import fs from 'fs/promises';
-import { SafeSearchType, search as duckSearch } from "duck-duck-scrape";
-import { braveSearch } from "./tools/brave-search";
-import { rewriteQuery } from "./tools/query-rewriter";
-import { dedupQueries } from "./tools/dedup";
-import { evaluateAnswer } from "./tools/evaluator";
-import { analyzeSteps } from "./tools/error-analyzer";
-import { SEARCH_PROVIDER, STEP_SLEEP, modelConfigs } from "./config";
-import { TokenTracker } from "./utils/token-tracker";
-import { ActionTracker } from "./utils/action-tracker";
-import { StepAction, AnswerAction } from "./types";
-import { TrackerContext } from "./types";
-import { jinaSearch } from "./tools/jinaSearch";
+import {SafeSearchType, search as duckSearch} from "duck-duck-scrape";
+import {braveSearch} from "./tools/brave-search";
+import {rewriteQuery} from "./tools/query-rewriter";
+import {dedupQueries} from "./tools/dedup";
+import {evaluateAnswer} from "./tools/evaluator";
+import {analyzeSteps} from "./tools/error-analyzer";
+import {SEARCH_PROVIDER, STEP_SLEEP, modelConfigs} from "./config";
+import {TokenTracker} from "./utils/token-tracker";
+import {ActionTracker} from "./utils/action-tracker";
+import {StepAction, AnswerAction} from "./types";
+import {TrackerContext} from "./types";
+import {jinaSearch} from "./tools/jinaSearch";
 
 async function sleep(ms: number) {
   const seconds = Math.ceil(ms / 1000);
@@ -24,75 +24,53 @@ async function sleep(ms: number) {
 }
 
 function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boolean, allowSearch: boolean) {
-  const schemas: z.ZodDiscriminatedUnionOption<'action'>[] = [];
+  const actions: string[] = [];
+  const properties: Record<string, z.ZodTypeAny> = {
+    action: z.enum(['placeholder']), // Will update later with actual actions
+    think: z.string().describe("Explain why choose this action, what's the thought process behind choosing this action")
+  };
 
   if (allowSearch) {
-    schemas.push(z.object({
-      type: z.literal('object'),
-      action: z.literal('search'),
-      think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
-      searchQuery: z.string().describe('Only required when choosing \'search\' action, must be a short, keyword-based query that BM25, tf-idf based search engines can understand.')
-    }));
+    actions.push("search");
+    properties.searchQuery = z.string()
+      .describe("Only required when choosing 'search' action, must be a short, keyword-based query that BM25, tf-idf based search engines can understand.").optional();
   }
 
   if (allowAnswer) {
-    schemas.push(z.object({
-      type: z.literal('object'),
-      action: z.literal('answer'),
-      think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
-      answer: z.string().describe('Only required when choosing \'answer\' action, must be the final answer in natural language'),
-      references: z.array(z.object({
-        exactQuote: z.string().describe('Exact relevant quote from the document'),
-        url: z.string().describe('URL of the document; must be directly from the context')
-      })).describe('Must be an array of references that support the answer, each reference must contain an exact quote and the URL of the document')
-    }));
+    actions.push("answer");
+    properties.answer = z.string()
+      .describe("Only required when choosing 'answer' action, must be the final answer in natural language").optional();
+    properties.references = z.array(
+      z.object({
+        exactQuote: z.string().describe("Exact relevant quote from the document"),
+        url: z.string().describe("URL of the document; must be directly from the context")
+      }).required()
+    ).describe("Must be an array of references that support the answer, each reference must contain an exact quote and the URL of the document").optional();
   }
 
   if (allowReflect) {
-    schemas.push(z.object({
-      type: z.literal('object'),
-      action: z.literal('reflect'),
-      think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
-      questionsToAnswer: z.array(z.string().describe('each question must be a single line, concise and clear. not composite or compound, less than 20 words.')).max(2)
-        .describe('List of most important questions to fill the knowledge gaps of finding the answer to the original question')
-    }));
+    actions.push("reflect");
+    properties.questionsToAnswer = z.array(
+      z.string().describe("each question must be a single line, concise and clear. not composite or compound, less than 20 words.")
+    ).max(2)
+      .describe("List of most important questions to fill the knowledge gaps of finding the answer to the original question").optional();
   }
 
   if (allowRead) {
-    schemas.push(z.object({
-      type: z.literal('object'),
-      action: z.literal('visit'),
-      think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
-      URLTargets: z.array(z.string()).max(2)
-        .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
-    }));
+    actions.push("visit");
+    properties.URLTargets = z.array(z.string())
+      .max(2)
+      .describe("Must be an array of URLs, choose up the most relevant 2 URLs to visit").optional();
   }
 
-  if (schemas.length === 0) {
-    throw new Error('At least one action type must be allowed');
-  }
+  // Update the enum values after collecting all actions
+  properties.action = z.enum(actions as [string, ...string[]])
+    .describe("Must match exactly one action type");
 
-  if (schemas.length === 0) {
-    throw new Error('At least one action type must be allowed');
-  }
+  return z.object(properties);
 
-  // Create a schema that works with Google's API requirements
-  return z.object({
-    type: z.literal('object'),
-    action: z.enum(['search', 'answer', 'reflect', 'visit']).describe('Must match exactly one action type'),
-    think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
-    searchQuery: z.string().optional().describe('Only required when choosing \'search\' action, must be a short, keyword-based query that BM25, tf-idf based search engines can understand.'),
-    answer: z.string().optional().describe('Only required when choosing \'answer\' action, must be the final answer in natural language'),
-    references: z.array(z.object({
-      exactQuote: z.string().describe('Exact relevant quote from the document'),
-      url: z.string().describe('URL of the document; must be directly from the context')
-    })).optional().describe('Must be an array of references that support the answer, each reference must contain an exact quote and the URL of the document'),
-    questionsToAnswer: z.array(z.string().describe('each question must be a single line, concise and clear. not composite or compound, less than 20 words.')).max(2).optional()
-      .describe('List of most important questions to fill the knowledge gaps of finding the answer to the original question'),
-    URLTargets: z.array(z.string()).max(2).optional()
-      .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
-  });
 }
+
 
 function getPrompt(
   question: string,
@@ -142,7 +120,7 @@ ${k.question}
 <answer>
 ${k.answer}
 </answer>
-${k.references.length > 0 ? `
+${k.references?.length > 0 ? `
 <references>
 ${JSON.stringify(k.references)}
 </references>
@@ -347,7 +325,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
       false
     );
 
-    const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agent.model);
+    const model = createGoogleGenerativeAI({apiKey: process.env.GEMINI_API_KEY})(modelConfigs.agent.model);
     let object;
     let totalTokens = 0;
     try {
@@ -677,8 +655,8 @@ You decided to think out of the box or cut from a completely different angle.`);
   } else {
     console.log('Enter Beast mode!!!')
     // any answer is better than no answer, humanity last resort
-    step ++;
-    totalStep ++;
+    step++;
+    totalStep++;
     const prompt = getPrompt(
       question,
       diaryContext,
@@ -693,7 +671,7 @@ You decided to think out of the box or cut from a completely different angle.`);
       true
     );
 
-    const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agentBeastMode.model);
+    const model = createGoogleGenerativeAI({apiKey: process.env.GEMINI_API_KEY})(modelConfigs.agentBeastMode.model);
     let object;
     let totalTokens = 0;
     try {

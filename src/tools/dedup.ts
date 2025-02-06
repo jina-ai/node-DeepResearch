@@ -8,10 +8,9 @@ import type { DedupResponse } from '../types';
 
 
 const responseSchema = z.object({
-  type: z.literal('object'),
   think: z.string().describe('Strategic reasoning about the overall deduplication approach'),
   unique_queries: z.array(z.string().describe('Unique query that passed the deduplication process, must be less than 30 characters'))
-    .describe('Array of semantically unique queries')
+    .describe('Array of semantically unique queries').max(3)
 });
 
 const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.dedup.model);

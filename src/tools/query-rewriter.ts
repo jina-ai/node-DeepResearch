@@ -7,7 +7,6 @@ import { generateObject } from 'ai';
 import { handleGenerateObjectError } from '../utils/error-handling';
 
 const responseSchema = z.object({
-  type: z.literal('object'),
   think: z.string().describe('Strategic reasoning about query complexity and search approach'),
   queries: z.array(z.string().describe('Search query, must be less than 30 characters'))
     .min(1)
