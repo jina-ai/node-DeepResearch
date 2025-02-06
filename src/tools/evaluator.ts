@@ -1,33 +1,15 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-import { GEMINI_API_KEY, modelConfigs } from "../config";
+import { google } from '@ai-sdk/google';
+import { z } from 'zod';
+import { generateObject } from 'ai';
 import { TokenTracker } from "../utils/token-tracker";
-
 import { EvaluationResponse } from '../types';
 
-const responseSchema = {
-  type: SchemaType.OBJECT,
-  properties: {
-    is_definitive: {
-      type: SchemaType.BOOLEAN,
-      description: "Whether the answer provides a definitive response without uncertainty or 'I don't know' type statements"
-    },
-    reasoning: {
-      type: SchemaType.STRING,
-      description: "Explanation of why the answer is or isn't definitive"
-    }
-  },
-  required: ["is_definitive", "reasoning"]
-};
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: modelConfigs.evaluator.model,
-  generationConfig: {
-    temperature: modelConfigs.evaluator.temperature,
-    responseMimeType: "application/json",
-    responseSchema: responseSchema
-  }
+const responseSchema = z.object({
+  is_definitive: z.boolean().describe('Whether the answer provides a definitive response'),
+  reasoning: z.string().describe('Explanation of why the answer is or isn\'t definitive')
 });
+
+const model = google('gemini-1.5-pro-latest');
 
 function getPrompt(question: string, answer: string): string {
   return `You are an evaluator of answer definitiveness. Analyze if the given answer provides a definitive response or not.
@@ -66,17 +48,18 @@ Answer: ${JSON.stringify(answer)}`;
 export async function evaluateAnswer(question: string, answer: string, tracker?: TokenTracker): Promise<{ response: EvaluationResponse, tokens: number }> {
   try {
     const prompt = getPrompt(question, answer);
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const usage = response.usageMetadata;
-    const json = JSON.parse(response.text()) as EvaluationResponse;
-    console.log('Evaluation:', {
-      definitive: json.is_definitive,
-      reason: json.reasoning
+    const { object } = await generateObject({
+      model,
+      schema: responseSchema,
+      prompt
     });
-    const tokens = usage?.totalTokenCount || 0;
+    console.log('Evaluation:', {
+      definitive: object.is_definitive,
+      reason: object.reasoning
+    });
+    const tokens = 0; // TODO: Token tracking not available in new SDK
     (tracker || new TokenTracker()).trackUsage('evaluator', tokens);
-    return { response: json, tokens };
+    return { response: object, tokens };
   } catch (error) {
     console.error('Error in answer evaluation:', error);
     throw error;

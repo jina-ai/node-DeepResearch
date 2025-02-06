@@ -1,4 +1,17 @@
-import { SchemaType } from "@google/generative-ai";
+import { z } from 'zod';
+
+export const ThinkSchema = z.string().describe('Strategic reasoning about the process');
+
+export const QuerySchema = z.string()
+  .max(30)
+  .describe('Search query, must be less than 30 characters');
+
+export const URLSchema = z.string().url();
+
+export const ReferenceSchema = z.object({
+  exactQuote: z.string().describe('Exact relevant quote from the document'),
+  url: URLSchema.describe('URL of the document')
+});
 
 // Action Types
 type BaseAction = {
@@ -120,26 +133,7 @@ export type KeywordsResponse = {
 };
 
 // Schema Types
-export type SchemaProperty = {
-  type: SchemaType;
-  description: string;
-  enum?: string[];
-  items?: {
-    type: SchemaType;
-    description?: string;
-    properties?: Record<string, SchemaProperty>;
-    required?: string[];
-  };
-  properties?: Record<string, SchemaProperty>;
-  required?: string[];
-  maxItems?: number;
-};
-
-export type ResponseSchema = {
-  type: SchemaType;
-  properties: Record<string, SchemaProperty>;
-  required: string[];
-};
+export type ResponseSchema = z.ZodObject<any>;
 
 export interface StreamMessage {
   type: 'progress' | 'answer' | 'error';

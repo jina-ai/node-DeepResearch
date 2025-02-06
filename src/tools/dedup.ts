@@ -1,37 +1,16 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-import { GEMINI_API_KEY, modelConfigs } from "../config";
+import { google } from '@ai-sdk/google';
+import { z } from 'zod';
+import { generateObject } from 'ai';
 import { TokenTracker } from "../utils/token-tracker";
+import { ThinkSchema, QuerySchema } from '../types';
 
-import { DedupResponse } from '../types';
-
-const responseSchema = {
-  type: SchemaType.OBJECT,
-  properties: {
-    think: {
-      type: SchemaType.STRING,
-      description: "Strategic reasoning about the overall deduplication approach"
-    },
-    unique_queries: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.STRING,
-        description: "Unique query that passed the deduplication process, must be less than 30 characters"
-      },
-      description: "Array of semantically unique queries"
-    }
-  },
-  required: ["think", "unique_queries"]
-};
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: modelConfigs.dedup.model,
-  generationConfig: {
-    temperature: modelConfigs.dedup.temperature,
-    responseMimeType: "application/json",
-    responseSchema: responseSchema
-  }
+const responseSchema = z.object({
+  think: ThinkSchema,
+  unique_queries: z.array(QuerySchema)
+    .describe('Array of semantically unique queries')
 });
+
+const model = google('gemini-1.5-pro-latest');
 
 function getPrompt(newQueries: string[], existingQueries: string[]): string {
   return `You are an expert in semantic similarity analysis. Given a set of queries (setA) and a set of queries (setB)
@@ -88,14 +67,15 @@ SetB: ${JSON.stringify(existingQueries)}`;
 export async function dedupQueries(newQueries: string[], existingQueries: string[], tracker?: TokenTracker): Promise<{ unique_queries: string[], tokens: number }> {
   try {
     const prompt = getPrompt(newQueries, existingQueries);
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const usage = response.usageMetadata;
-    const json = JSON.parse(response.text()) as DedupResponse;
-    console.log('Dedup:', json.unique_queries);
-    const tokens = usage?.totalTokenCount || 0;
+    const { object } = await generateObject({
+      model,
+      schema: responseSchema,
+      prompt
+    });
+    console.log('Dedup:', object.unique_queries);
+    const tokens = 0; // TODO: Token tracking not available in new SDK
     (tracker || new TokenTracker()).trackUsage('dedup', tokens);
-    return { unique_queries: json.unique_queries, tokens };
+    return { unique_queries: object.unique_queries, tokens };
   } catch (error) {
     console.error('Error in deduplication analysis:', error);
     throw error;

@@ -18,16 +18,18 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
+    "@ai-sdk/google": "^1.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node-fetch": "^2.6.12",
+    "ai": "^4.1.21",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
     "duck-duck-scrape": "^2.2.7",
     "express": "^4.21.2",
     "node-fetch": "^3.3.2",
-    "undici": "^7.3.0"
+    "undici": "^7.3.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
