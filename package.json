@@ -19,6 +19,7 @@
   "description": "",
   "dependencies": {
     "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/openai": "^1.1.9",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node-fetch": "^2.6.12",
