@@ -61,52 +61,57 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
       .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
   }) : null;
 
-  type ActionSchema = z.ZodObject<any, "strip", z.ZodTypeAny>;
-  const schemas: ActionSchema[] = [];
+  const schemas: z.ZodDiscriminatedUnionOption<'action'>[] = [];
 
   if (allowSearch) {
     schemas.push(z.object({
-      ...baseSchema,
+      type: z.literal('object'),
       action: z.literal('search'),
+      think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
       searchQuery: z.string().describe('Only required when choosing \'search\' action, must be a short, keyword-based query that BM25, tf-idf based search engines can understand.')
-    }).strict());
+    }));
   }
 
   if (allowAnswer) {
     schemas.push(z.object({
-      ...baseSchema,
+      type: z.literal('object'),
       action: z.literal('answer'),
+      think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
       answer: z.string().describe('Only required when choosing \'answer\' action, must be the final answer in natural language'),
       references: z.array(z.object({
         exactQuote: z.string().describe('Exact relevant quote from the document'),
         url: z.string().describe('URL of the document; must be directly from the context')
       })).describe('Must be an array of references that support the answer, each reference must contain an exact quote and the URL of the document')
-    }).strict());
+    }));
   }
 
   if (allowReflect) {
     schemas.push(z.object({
-      ...baseSchema,
+      type: z.literal('object'),
       action: z.literal('reflect'),
+      think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
       questionsToAnswer: z.array(z.string().describe('each question must be a single line, concise and clear. not composite or compound, less than 20 words.')).max(2)
         .describe('List of most important questions to fill the knowledge gaps of finding the answer to the original question')
-    }).strict());
+    }));
   }
 
   if (allowRead) {
     schemas.push(z.object({
-      ...baseSchema,
+      type: z.literal('object'),
       action: z.literal('visit'),
+      think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
       URLTargets: z.array(z.string()).max(2)
         .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
-    }).strict());
+    }));
   }
 
   if (schemas.length === 0) {
     throw new Error('At least one action type must be allowed');
   }
 
-  const schema = z.discriminatedUnion('action', schemas);
+  const firstSchema = schemas[0];
+  const restSchemas = schemas.slice(1);
+  const schema = z.discriminatedUnion('action', [firstSchema, ...restSchemas]);
 
   return schema;
 }
