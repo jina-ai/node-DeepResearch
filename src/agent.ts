@@ -71,11 +71,26 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
     throw new Error('At least one action type must be allowed');
   }
 
-  const firstSchema = schemas[0];
-  const restSchemas = schemas.slice(1);
-  const schema = z.discriminatedUnion('action', [firstSchema, ...restSchemas]);
+  if (schemas.length === 0) {
+    throw new Error('At least one action type must be allowed');
+  }
 
-  return schema;
+  // Create a schema that works with Google's API requirements
+  return z.object({
+    type: z.literal('object'),
+    action: z.enum(['search', 'answer', 'reflect', 'visit']).describe('Must match exactly one action type'),
+    think: z.string().describe('Explain why choose this action, what\'s the thought process behind choosing this action'),
+    searchQuery: z.string().optional().describe('Only required when choosing \'search\' action, must be a short, keyword-based query that BM25, tf-idf based search engines can understand.'),
+    answer: z.string().optional().describe('Only required when choosing \'answer\' action, must be the final answer in natural language'),
+    references: z.array(z.object({
+      exactQuote: z.string().describe('Exact relevant quote from the document'),
+      url: z.string().describe('URL of the document; must be directly from the context')
+    })).optional().describe('Must be an array of references that support the answer, each reference must contain an exact quote and the URL of the document'),
+    questionsToAnswer: z.array(z.string().describe('each question must be a single line, concise and clear. not composite or compound, less than 20 words.')).max(2).optional()
+      .describe('List of most important questions to fill the knowledge gaps of finding the answer to the original question'),
+    URLTargets: z.array(z.string()).max(2).optional()
+      .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
+  });
 }
 
 function getPrompt(
@@ -332,14 +347,13 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
     );
 
     const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agent.model);
-    const { object } = await generateObject({
+    const { object, tokens: { completion, prompt: promptTokens, total } } = await generateObject({
       model,
       schema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch),
-      prompt
+      prompt,
+      maxTokens: 1000
     });
-
-    const tokens = 0; // TODO: Token tracking not available in new SDK
-    context.tokenTracker.trackUsage('agent', tokens);
+    context.tokenTracker.trackUsage('agent', total);
     thisStep = object as StepAction;
     // print allowed and chose action
     const actionsStr = [allowSearch, allowRead, allowAnswer, allowReflect].map((a, i) => a ? ['search', 'read', 'answer', 'reflect'][i] : null).filter(a => a).join(', ');
@@ -669,14 +683,13 @@ You decided to think out of the box or cut from a completely different angle.`);
     );
 
     const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agentBeastMode.model);
-    const { object } = await generateObject({
+    const { object, tokens: { completion, prompt: promptTokens, total } } = await generateObject({
       model,
       schema: getSchema(false, false, allowAnswer, false),
-      prompt
+      prompt,
+      maxTokens: 1000
     });
-
-    const tokens = 0; // TODO: Token tracking not available in new SDK
-    context.tokenTracker.trackUsage('agent', tokens);
+    context.tokenTracker.trackUsage('agent', total);
 
     await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
     thisStep = object as StepAction;
