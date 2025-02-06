@@ -1,5 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { LLM_PROVIDER, GEMINI_API_KEY, OPENAI_API_KEY } from "../config";
 import { modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { SearchAction, KeywordsResponse } from '../types';
@@ -14,7 +16,17 @@ const responseSchema = z.object({
     .describe('Array of search queries, orthogonal to each other')
 });
 
-const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.queryRewriter.model);
+const getModel = () => {
+  if (LLM_PROVIDER === 'openai') {
+    return createOpenAI({
+      apiKey: OPENAI_API_KEY,
+      compatibility: 'strict'
+    })(modelConfigs[LLM_PROVIDER].queryRewriter.model);
+  }
+  return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(modelConfigs[LLM_PROVIDER].queryRewriter.model);
+};
+
+const model = getModel();
 
 function getPrompt(action: SearchAction): string {
   return `You are an expert Information Retrieval Assistant. Transform user queries into precise keyword combinations with strategic reasoning and appropriate search operators.
@@ -102,7 +114,7 @@ export async function rewriteQuery(action: SearchAction, tracker?: TokenTracker)
         model,
         schema: responseSchema,
         prompt,
-        maxTokens: modelConfigs.queryRewriter.maxTokens
+        maxTokens: modelConfigs[LLM_PROVIDER].queryRewriter.maxTokens
       });
       object = result.object;
       tokens = result.usage?.totalTokens || 0;
