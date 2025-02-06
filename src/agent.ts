@@ -23,14 +23,6 @@ async function sleep(ms: number) {
 }
 
 function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boolean, allowSearch: boolean) {
-  const actions = ['search', 'visit', 'answer', 'reflect'].filter(action => {
-    if (action === 'search') return allowSearch;
-    if (action === 'visit') return allowRead;
-    if (action === 'answer') return allowAnswer;
-    if (action === 'reflect') return allowReflect;
-    return false;
-  });
-
   // Since we can't use z.union with Google's API, we'll use a single schema
   // with all possible fields and validate the combinations in runtime
   // We need at least one variant in the union, so we'll use a never schema if no actions are allowed
@@ -65,9 +57,16 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
     })] : [])
   ];
 
-  const schema = variants.length > 0 
-    ? z.discriminatedUnion('action', variants as [z.ZodObject<any>, ...z.ZodObject<any>[]])
-    : z.never();
+  // Ensure we have at least one variant
+  if (variants.length === 0) {
+    throw new Error('At least one action type must be allowed');
+  }
+
+  // Cast to tuple type with at least one element
+  const schema = z.discriminatedUnion('action', variants as [
+    z.ZodObject<any, "strip", z.ZodTypeAny, any, any>,
+    ...z.ZodObject<any, "strip", z.ZodTypeAny, any, any>[]
+  ]);
 
   return schema;
 }
