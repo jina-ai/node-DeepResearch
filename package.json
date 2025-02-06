@@ -1,8 +1,15 @@
 {
   "name": "node-deepresearch",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "prepare": "npm run build",
     "build": "tsc",
     "dev": "npx ts-node src/agent.ts",
     "search": "npx ts-node src/test-duck.ts",
