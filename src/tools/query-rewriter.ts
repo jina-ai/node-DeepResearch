@@ -6,6 +6,7 @@ import { SearchAction, ThinkSchema, QuerySchema } from '../types';
 import { generateObject } from 'ai';
 
 const responseSchema = z.object({
+  type: z.literal('object'),
   think: ThinkSchema,
   queries: z.array(QuerySchema)
     .min(1)
@@ -13,7 +14,7 @@ const responseSchema = z.object({
     .describe('Array of search queries, orthogonal to each other')
 });
 
-const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
 
 function getPrompt(action: SearchAction): string {
   return `You are an expert Information Retrieval Assistant. Transform user queries into precise keyword combinations with strategic reasoning and appropriate search operators.

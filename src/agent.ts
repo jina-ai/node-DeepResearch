@@ -63,10 +63,21 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
   }
 
   // Cast to tuple type with at least one element
-  const schema = z.discriminatedUnion('action', variants as [
-    z.ZodObject<any, "strip", z.ZodTypeAny, any, any>,
-    ...z.ZodObject<any, "strip", z.ZodTypeAny, any, any>[]
-  ]);
+  const schema = z.object({
+    type: z.literal('object'),
+    action: z.enum(['search', 'visit', 'answer', 'reflect']),
+    think: z.string(),
+    ...(allowSearch ? { searchQuery: z.string() } : {}),
+    ...(allowAnswer ? {
+      answer: z.string(),
+      references: z.array(z.object({
+        exactQuote: z.string(),
+        url: z.string()
+      }))
+    } : {}),
+    ...(allowReflect ? { questionsToAnswer: z.array(z.string()).max(2) } : {}),
+    ...(allowRead ? { URLTargets: z.array(z.string()).max(2) } : {})
+  });
 
   return schema;
 }
@@ -324,7 +335,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
       false
     );
 
-    const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
+    const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
     const { object } = await generateObject({
       model,
       schema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch),
@@ -661,7 +672,7 @@ You decided to think out of the box or cut from a completely different angle.`);
       true
     );
 
-    const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
+    const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
     const { object } = await generateObject({
       model,
       schema: getSchema(false, false, allowAnswer, false),

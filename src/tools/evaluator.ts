@@ -6,11 +6,12 @@ import { TokenTracker } from "../utils/token-tracker";
 import { EvaluationResponse } from '../types';
 
 const responseSchema = z.object({
+  type: z.literal('object'),
   is_definitive: z.boolean().describe('Whether the answer provides a definitive response'),
   reasoning: z.string().describe('Explanation of why the answer is or isn\'t definitive')
 });
 
-const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
 
 function getPrompt(question: string, answer: string): string {
   return `You are an evaluator of answer definitiveness. Analyze if the given answer provides a definitive response or not.

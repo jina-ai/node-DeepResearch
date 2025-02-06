@@ -6,12 +6,13 @@ import { TokenTracker } from "../utils/token-tracker";
 import { ErrorAnalysisResponse } from '../types';
 
 const responseSchema = z.object({
+  type: z.literal('object'),
   recap: z.string().describe('Recap of the actions taken and the steps conducted'),
   blame: z.string().describe('Which action or step was the root cause of the answer rejection'),
   improvement: z.string().describe('Suggested key improvement for the next iteration')
 });
 
-const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
 
 function getPrompt(diaryContext: string[]): string {
   return `You are an expert at analyzing search and reasoning processes. Your task is to analyze the given sequence of steps and identify what went wrong in the search process.

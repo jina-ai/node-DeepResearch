@@ -6,12 +6,13 @@ import { TokenTracker } from "../utils/token-tracker";
 import { ThinkSchema, QuerySchema } from '../types';
 
 const responseSchema = z.object({
+  type: z.literal('object'),
   think: ThinkSchema,
   unique_queries: z.array(QuerySchema)
     .describe('Array of semantically unique queries')
 });
 
-const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
 
 function getPrompt(newQueries: string[], existingQueries: string[]): string {
   return `You are an expert in semantic similarity analysis. Given a set of queries (setA) and a set of queries (setB)
