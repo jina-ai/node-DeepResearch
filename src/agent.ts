@@ -61,16 +61,52 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
       .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
   }) : null;
 
-  const validSchemas = [searchSchema, answerSchema, reflectSchema, visitSchema].filter(Boolean);
+  type ActionSchema = z.ZodObject<any, "strip", z.ZodTypeAny>;
+  const schemas: ActionSchema[] = [];
 
-  if (validSchemas.length === 0) {
+  if (allowSearch) {
+    schemas.push(z.object({
+      ...baseSchema,
+      action: z.literal('search'),
+      searchQuery: z.string().describe('Only required when choosing \'search\' action, must be a short, keyword-based query that BM25, tf-idf based search engines can understand.')
+    }).strict());
+  }
+
+  if (allowAnswer) {
+    schemas.push(z.object({
+      ...baseSchema,
+      action: z.literal('answer'),
+      answer: z.string().describe('Only required when choosing \'answer\' action, must be the final answer in natural language'),
+      references: z.array(z.object({
+        exactQuote: z.string().describe('Exact relevant quote from the document'),
+        url: z.string().describe('URL of the document; must be directly from the context')
+      })).describe('Must be an array of references that support the answer, each reference must contain an exact quote and the URL of the document')
+    }).strict());
+  }
+
+  if (allowReflect) {
+    schemas.push(z.object({
+      ...baseSchema,
+      action: z.literal('reflect'),
+      questionsToAnswer: z.array(z.string().describe('each question must be a single line, concise and clear. not composite or compound, less than 20 words.')).max(2)
+        .describe('List of most important questions to fill the knowledge gaps of finding the answer to the original question')
+    }).strict());
+  }
+
+  if (allowRead) {
+    schemas.push(z.object({
+      ...baseSchema,
+      action: z.literal('visit'),
+      URLTargets: z.array(z.string()).max(2)
+        .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
+    }).strict());
+  }
+
+  if (schemas.length === 0) {
     throw new Error('At least one action type must be allowed');
   }
 
-  // Ensure we have at least one schema for the discriminated union
-  const firstSchema = validSchemas[0] as z.ZodObject<any>;
-  const restSchemas = validSchemas.slice(1) as z.ZodObject<any>[];
-  const schema = z.discriminatedUnion('action', [firstSchema, ...restSchemas]);
+  const schema = z.discriminatedUnion('action', schemas);
 
   return schema;
 }
