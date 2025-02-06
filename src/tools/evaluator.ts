@@ -1,6 +1,7 @@
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { generateObject } from 'ai';
+import { GEMINI_API_KEY } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { EvaluationResponse } from '../types';
 
@@ -9,7 +10,7 @@ const responseSchema = z.object({
   reasoning: z.string().describe('Explanation of why the answer is or isn\'t definitive')
 });
 
-const model = google('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
 
 function getPrompt(question: string, answer: string): string {
   return `You are an evaluator of answer definitiveness. Analyze if the given answer provides a definitive response or not.

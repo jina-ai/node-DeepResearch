@@ -1,4 +1,4 @@
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { generateObject } from 'ai';
 import { readUrl } from "./tools/read";
@@ -9,7 +9,7 @@ import { rewriteQuery } from "./tools/query-rewriter";
 import { dedupQueries } from "./tools/dedup";
 import { evaluateAnswer } from "./tools/evaluator";
 import { analyzeSteps } from "./tools/error-analyzer";
-import { SEARCH_PROVIDER, STEP_SLEEP } from "./config";
+import { GEMINI_API_KEY, SEARCH_PROVIDER, STEP_SLEEP } from "./config";
 import { TokenTracker } from "./utils/token-tracker";
 import { ActionTracker } from "./utils/action-tracker";
 import { StepAction, AnswerAction } from "./types";
@@ -316,7 +316,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
       false
     );
 
-    const model = google('gemini-1.5-pro-latest');
+    const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
     const { object } = await generateObject({
       model,
       schema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch),
@@ -653,7 +653,7 @@ You decided to think out of the box or cut from a completely different angle.`);
       true
     );
 
-    const model = google('gemini-1.5-pro-latest');
+    const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
     const { object } = await generateObject({
       model,
       schema: getSchema(false, false, allowAnswer, false),

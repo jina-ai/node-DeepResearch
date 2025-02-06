@@ -1,5 +1,6 @@
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
+import { GEMINI_API_KEY } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { SearchAction, ThinkSchema, QuerySchema } from '../types';
 import { generateObject } from 'ai';
@@ -12,7 +13,7 @@ const responseSchema = z.object({
     .describe('Array of search queries, orthogonal to each other')
 });
 
-const model = google('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
 
 function getPrompt(action: SearchAction): string {
   return `You are an expert Information Retrieval Assistant. Transform user queries into precise keyword combinations with strategic reasoning and appropriate search operators.

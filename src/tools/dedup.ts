@@ -1,6 +1,7 @@
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { generateObject } from 'ai';
+import { GEMINI_API_KEY } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { ThinkSchema, QuerySchema } from '../types';
 
@@ -10,7 +11,7 @@ const responseSchema = z.object({
     .describe('Array of semantically unique queries')
 });
 
-const model = google('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-1.5-pro-latest');
 
 function getPrompt(newQueries: string[], existingQueries: string[]): string {
   return `You are an expert in semantic similarity analysis. Given a set of queries (setA) and a set of queries (setB)
