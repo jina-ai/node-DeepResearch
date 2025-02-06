@@ -3,7 +3,7 @@ export interface GenerateObjectResult<T> {
   totalTokens: number;
 }
 
-export async function handleGenerateObjectError<T>(error: unknown, functionName: string): Promise<GenerateObjectResult<T>> {
+export async function handleGenerateObjectError<T>(error: unknown): Promise<GenerateObjectResult<T>> {
   if (error instanceof Error && error.name === 'AI_NoObjectGeneratedError') {
     try {
       const partialResponse = JSON.parse((error as any).response);
