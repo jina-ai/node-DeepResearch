@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { modelConfigs, LLM_PROVIDER, getModel } from "../config";
+import { modelConfigs, LLM_PROVIDER, getModel, getMaxTokens } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { SearchAction, KeywordsResponse } from '../types';
 import { handleGenerateObjectError } from '../utils/error-handling';
@@ -103,7 +103,7 @@ export async function rewriteQuery(action: SearchAction, tracker?: TokenTracker)
         model,
         schema: responseSchema,
         prompt,
-        maxTokens: modelConfigs[LLM_PROVIDER].queryRewriter.maxTokens
+        maxTokens: getMaxTokens('queryRewriter')
       });
       object = result.object;
       tokens = result.usage?.totalTokens || 0;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { modelConfigs, LLM_PROVIDER, getModel } from "../config";
+import { modelConfigs, LLM_PROVIDER, getModel, getMaxTokens } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { EvaluationResponse } from '../types';
 import { handleGenerateObjectError } from '../utils/error-handling';
@@ -58,7 +58,7 @@ export async function evaluateAnswer(question: string, answer: string, tracker?:
         model,
         schema: responseSchema,
         prompt,
-        maxTokens: modelConfigs[LLM_PROVIDER].evaluator.maxTokens
+        maxTokens: getMaxTokens('evaluator')
       });
       object = result.object;
       totalTokens = result.usage?.totalTokens || 0;

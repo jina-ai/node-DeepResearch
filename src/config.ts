@@ -6,6 +6,23 @@ import { createOpenAI } from '@ai-sdk/openai';
 export type LLMProvider = 'openai' | 'gemini';
 export type ToolName = keyof ToolConfigs;
 
+function isValidProvider(provider: string): provider is LLMProvider {
+  return provider === 'openai' || provider === 'gemini';
+}
+
+function validateModelConfig(config: ModelConfig, toolName: string): ModelConfig {
+  if (typeof config.model !== 'string' || config.model.length === 0) {
+    throw new Error(`Invalid model name for ${toolName}`);
+  }
+  if (typeof config.temperature !== 'number' || config.temperature < 0 || config.temperature > 1) {
+    throw new Error(`Invalid temperature for ${toolName}`);
+  }
+  if (typeof config.maxTokens !== 'number' || config.maxTokens <= 0) {
+    throw new Error(`Invalid maxTokens for ${toolName}`);
+  }
+  return config;
+}
+
 export interface ModelConfig {
   model: string;
   temperature: number;
@@ -40,7 +57,13 @@ export const OPENAI_API_KEY = process.env.OPENAI_API_KEY as string;
 export const JINA_API_KEY = process.env.JINA_API_KEY as string;
 export const BRAVE_API_KEY = process.env.BRAVE_API_KEY as string;
 export const SEARCH_PROVIDER: 'brave' | 'jina' | 'duck' = 'jina';
-export const LLM_PROVIDER: LLMProvider = (process.env.LLM_PROVIDER as LLMProvider) || 'gemini';
+export const LLM_PROVIDER: LLMProvider = (() => {
+  const provider = process.env.LLM_PROVIDER || 'gemini';
+  if (!isValidProvider(provider)) {
+    throw new Error(`Invalid LLM provider: ${provider}`);
+  }
+  return provider;
+})();
 
 const DEFAULT_GEMINI_MODEL = 'gemini-1.5-flash';
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
@@ -59,27 +82,44 @@ const defaultOpenAIConfig: ModelConfig = {
 
 export const modelConfigs: Record<LLMProvider, ToolConfigs> = {
   gemini: {
-    dedup: { ...defaultGeminiConfig, temperature: 0.1 },
-    evaluator: { ...defaultGeminiConfig },
-    errorAnalyzer: { ...defaultGeminiConfig },
-    queryRewriter: { ...defaultGeminiConfig, temperature: 0.1 },
-    agent: { ...defaultGeminiConfig, temperature: 0.7 },
-    agentBeastMode: { ...defaultGeminiConfig, temperature: 0.7 }
+    dedup: validateModelConfig({ ...defaultGeminiConfig, temperature: 0.1 }, 'dedup'),
+    evaluator: validateModelConfig({ ...defaultGeminiConfig }, 'evaluator'),
+    errorAnalyzer: validateModelConfig({ ...defaultGeminiConfig }, 'errorAnalyzer'),
+    queryRewriter: validateModelConfig({ ...defaultGeminiConfig, temperature: 0.1 }, 'queryRewriter'),
+    agent: validateModelConfig({ ...defaultGeminiConfig, temperature: 0.7 }, 'agent'),
+    agentBeastMode: validateModelConfig({ ...defaultGeminiConfig, temperature: 0.7 }, 'agentBeastMode')
   },
   openai: {
-    dedup: { ...defaultOpenAIConfig, temperature: 0.1 },
-    evaluator: { ...defaultOpenAIConfig },
-    errorAnalyzer: { ...defaultOpenAIConfig },
-    queryRewriter: { ...defaultOpenAIConfig, temperature: 0.1 },
-    agent: { ...defaultOpenAIConfig, temperature: 0.7 },
-    agentBeastMode: { ...defaultOpenAIConfig, temperature: 0.7 }
+    dedup: validateModelConfig({ ...defaultOpenAIConfig, temperature: 0.1 }, 'dedup'),
+    evaluator: validateModelConfig({ ...defaultOpenAIConfig }, 'evaluator'),
+    errorAnalyzer: validateModelConfig({ ...defaultOpenAIConfig }, 'errorAnalyzer'),
+    queryRewriter: validateModelConfig({ ...defaultOpenAIConfig, temperature: 0.1 }, 'queryRewriter'),
+    agent: validateModelConfig({ ...defaultOpenAIConfig, temperature: 0.7 }, 'agent'),
+    agentBeastMode: validateModelConfig({ ...defaultOpenAIConfig, temperature: 0.7 }, 'agentBeastMode')
   }
 };
 
-export function getModel(toolName: ToolName) {
+export function getToolConfig(toolName: ToolName): ModelConfig {
   if (!modelConfigs[LLM_PROVIDER][toolName]) {
     throw new Error(`Invalid tool name: ${toolName}`);
   }
+  return modelConfigs[LLM_PROVIDER][toolName];
+}
+
+export function getMaxTokens(toolName: ToolName): number {
+  return getToolConfig(toolName).maxTokens;
+}
+
+export function getTemperature(toolName: ToolName): number {
+  return getToolConfig(toolName).temperature;
+}
+
+export function getModelName(toolName: ToolName): string {
+  return getToolConfig(toolName).model;
+}
+
+export function getModel(toolName: ToolName) {
+  const config = getToolConfig(toolName);
 
   if (LLM_PROVIDER === 'openai') {
     if (!OPENAI_API_KEY) {
@@ -88,13 +128,13 @@ export function getModel(toolName: ToolName) {
     return createOpenAI({
       apiKey: OPENAI_API_KEY,
       compatibility: 'strict'
-    })(modelConfigs[LLM_PROVIDER][toolName].model);
+    })(config.model);
   }
 
   if (!GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY not found');
   }
-  return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(modelConfigs[LLM_PROVIDER][toolName].model);
+  return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(config.model);
 }
 
 export const STEP_SLEEP = 1000;

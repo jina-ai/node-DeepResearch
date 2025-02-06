@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { modelConfigs, LLM_PROVIDER, getModel } from "../config";
+import { modelConfigs, LLM_PROVIDER, getModel, getMaxTokens } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { ErrorAnalysisResponse } from '../types';
 import { handleGenerateObjectError } from '../utils/error-handling';
@@ -113,7 +113,7 @@ export async function analyzeSteps(diaryContext: string[], tracker?: TokenTracke
         model,
         schema: responseSchema,
         prompt,
-        maxTokens: modelConfigs[LLM_PROVIDER].errorAnalyzer.maxTokens
+        maxTokens: getMaxTokens('errorAnalyzer')
       });
       object = result.object;
       tokens = result.usage?.totalTokens || 0;

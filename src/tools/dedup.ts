@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { modelConfigs, LLM_PROVIDER, getModel } from "../config";
+import { modelConfigs, LLM_PROVIDER, getModel, getMaxTokens } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { handleGenerateObjectError } from '../utils/error-handling';
 import type { DedupResponse } from '../types';
@@ -75,7 +75,7 @@ export async function dedupQueries(newQueries: string[], existingQueries: string
         model,
         schema: responseSchema,
         prompt,
-        maxTokens: modelConfigs[LLM_PROVIDER].dedup.maxTokens
+        maxTokens: getMaxTokens('dedup')
       });
       object = result.object;
       tokens = result.usage?.totalTokens || 0;
