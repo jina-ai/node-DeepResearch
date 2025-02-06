@@ -33,32 +33,36 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
 
   // Since we can't use z.union with Google's API, we'll use a single schema
   // with all possible fields and validate the combinations in runtime
-  const schema = z.object({
-    action: z.enum(actions as [string, ...string[]]),
-    think: z.string().describe('Explain why choose this action'),
-    // Search action fields
-    searchQuery: allowSearch ? 
-      z.string().optional().describe('Search query for BM25/tf-idf search engines') :
-      z.undefined(),
-    // Answer action fields
-    answer: allowAnswer ?
-      z.string().optional().describe('Final answer in natural language') :
-      z.undefined(),
-    references: allowAnswer ?
-      z.array(z.object({
+  const schema = z.discriminatedUnion('action', [
+    // Search action
+    ...(allowSearch ? [z.object({
+      action: z.literal('search'),
+      think: z.string().describe('Explain why choose this action'),
+      searchQuery: z.string().describe('Search query for BM25/tf-idf search engines')
+    })] : []),
+    // Answer action
+    ...(allowAnswer ? [z.object({
+      action: z.literal('answer'),
+      think: z.string().describe('Explain why choose this action'),
+      answer: z.string().describe('Final answer in natural language'),
+      references: z.array(z.object({
         exactQuote: z.string(),
         url: z.string()
-      })).optional() :
-      z.undefined(),
-    // Reflect action fields
-    questionsToAnswer: allowReflect ?
-      z.array(z.string().max(20)).max(2).optional() :
-      z.undefined(),
-    // Visit action fields
-    URLTargets: allowRead ?
-      z.array(z.string()).max(2).optional() :
-      z.undefined()
-  });
+      }))
+    })] : []),
+    // Reflect action
+    ...(allowReflect ? [z.object({
+      action: z.literal('reflect'),
+      think: z.string().describe('Explain why choose this action'),
+      questionsToAnswer: z.array(z.string().max(20)).max(2)
+    })] : []),
+    // Visit action
+    ...(allowRead ? [z.object({
+      action: z.literal('visit'),
+      think: z.string().describe('Explain why choose this action'),
+      URLTargets: z.array(z.string()).max(2)
+    })] : [])
+  ]);
 
   return schema;
 }

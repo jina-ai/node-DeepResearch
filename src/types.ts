@@ -133,7 +133,7 @@ export type KeywordsResponse = {
 };
 
 // Schema Types
-export type ResponseSchema = z.ZodObject<any>;
+export type ResponseSchema = z.ZodType<any>;
 
 export interface StreamMessage {
   type: 'progress' | 'answer' | 'error';
