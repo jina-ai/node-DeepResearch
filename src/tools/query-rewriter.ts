@@ -98,7 +98,8 @@ export async function rewriteQuery(action: SearchAction, tracker?: TokenTracker)
     const { object } = await generateObject({
       model,
       schema: responseSchema,
-      prompt
+      prompt,
+      maxTokens: modelConfigs.queryRewriter.maxTokens
     });
 
     console.log('Query rewriter:', object.queries);

@@ -351,7 +351,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
       model,
       schema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch),
       prompt,
-      maxTokens: 1000
+      maxTokens: modelConfigs.agent.maxTokens
     });
     context.tokenTracker.trackUsage('agent', totalTokens);
     thisStep = object as StepAction;
@@ -687,7 +687,7 @@ You decided to think out of the box or cut from a completely different angle.`);
       model,
       schema: getSchema(false, false, allowAnswer, false),
       prompt,
-      maxTokens: 1000
+      maxTokens: modelConfigs.agentBeastMode.maxTokens
     });
     context.tokenTracker.trackUsage('agent', totalTokens);
 

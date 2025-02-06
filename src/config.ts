@@ -4,6 +4,7 @@ import { ProxyAgent, setGlobalDispatcher } from 'undici';
 interface ModelConfig {
   model: string;
   temperature: number;
+  maxTokens: number;
 }
 
 interface ToolConfigs {
@@ -38,7 +39,8 @@ const DEFAULT_MODEL = 'gemini-1.5-flash';
 
 const defaultConfig: ModelConfig = {
   model: DEFAULT_MODEL,
-  temperature: 0
+  temperature: 0,
+  maxTokens: 1000
 };
 
 export const modelConfigs: ToolConfigs = {

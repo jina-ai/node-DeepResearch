@@ -54,7 +54,7 @@ export async function evaluateAnswer(question: string, answer: string, tracker?:
       model,
       schema: responseSchema,
       prompt,
-      maxTokens: 1000
+      maxTokens: modelConfigs.evaluator.maxTokens
     });
     console.log('Evaluation:', {
       definitive: object.is_definitive,

@@ -72,7 +72,8 @@ export async function dedupQueries(newQueries: string[], existingQueries: string
     const { object } = await generateObject({
       model,
       schema: responseSchema,
-      prompt
+      prompt,
+      maxTokens: modelConfigs.dedup.maxTokens
     });
     console.log('Dedup:', object.unique_queries);
     const tokens = 0; // TODO: Token tracking not available in new SDK

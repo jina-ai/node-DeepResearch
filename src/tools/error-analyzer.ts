@@ -108,7 +108,8 @@ export async function analyzeSteps(diaryContext: string[], tracker?: TokenTracke
     const { object } = await generateObject({
       model,
       schema: responseSchema,
-      prompt
+      prompt,
+      maxTokens: modelConfigs.errorAnalyzer.maxTokens
     });
     console.log('Error analysis:', {
       is_valid: !object.blame,
