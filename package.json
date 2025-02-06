@@ -32,6 +32,7 @@
     "@types/node-fetch": "^2.6.12",
     "ai": "^4.1.21",
     "axios": "^1.7.9",
+    "commander": "^13.1.0",
     "cors": "^2.8.5",
     "duck-duck-scrape": "^2.2.7",
     "express": "^4.21.2",
@@ -40,6 +41,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/commander": "^2.12.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.10",
     "@typescript-eslint/eslint-plugin": "^7.0.1",
