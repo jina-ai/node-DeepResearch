@@ -1,18 +1,18 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { GEMINI_API_KEY } from "../config";
+import { modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { ErrorAnalysisResponse } from '../types';
 
 const responseSchema = z.object({
   type: z.literal('object'),
   recap: z.string().describe('Recap of the actions taken and the steps conducted'),
-  blame: z.string().describe('Which action or step was the root cause of the answer rejection'),
-  improvement: z.string().describe('Suggested key improvement for the next iteration')
+  blame: z.string().describe('Which action or the step was the root cause of the answer rejection'),
+  improvement: z.string().describe('Suggested key improvement for the next iteration, do not use bullet points, be concise and hot-take vibe.')
 });
 
-const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.errorAnalyzer.model);
 
 function getPrompt(diaryContext: string[]): string {
   return `You are an expert at analyzing search and reasoning processes. Your task is to analyze the given sequence of steps and identify what went wrong in the search process.

@@ -1,20 +1,20 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
-import { GEMINI_API_KEY } from "../config";
+import { modelConfigs } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
-import { SearchAction, ThinkSchema, QuerySchema } from '../types';
+import { SearchAction } from '../types';
 import { generateObject } from 'ai';
 
 const responseSchema = z.object({
   type: z.literal('object'),
-  think: ThinkSchema,
-  queries: z.array(QuerySchema)
+  think: z.string().describe('Strategic reasoning about query complexity and search approach'),
+  queries: z.array(z.string().describe('Search query, must be less than 30 characters'))
     .min(1)
     .max(3)
     .describe('Array of search queries, orthogonal to each other')
 });
 
-const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })('gemini-1.5-pro-latest');
+const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.queryRewriter.model);
 
 function getPrompt(action: SearchAction): string {
   return `You are an expert Information Retrieval Assistant. Transform user queries into precise keyword combinations with strategic reasoning and appropriate search operators.
