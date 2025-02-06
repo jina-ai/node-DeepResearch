@@ -347,13 +347,13 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
     );
 
     const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agent.model);
-    const { object, tokens: { completion, prompt: promptTokens, total } } = await generateObject({
+    const { object, usage: { totalTokens = 0 } = {} } = await generateObject({
       model,
       schema: getSchema(allowReflect, allowRead, allowAnswer, allowSearch),
       prompt,
       maxTokens: 1000
     });
-    context.tokenTracker.trackUsage('agent', total);
+    context.tokenTracker.trackUsage('agent', totalTokens);
     thisStep = object as StepAction;
     // print allowed and chose action
     const actionsStr = [allowSearch, allowRead, allowAnswer, allowReflect].map((a, i) => a ? ['search', 'read', 'answer', 'reflect'][i] : null).filter(a => a).join(', ');
@@ -683,13 +683,13 @@ You decided to think out of the box or cut from a completely different angle.`);
     );
 
     const model = createGoogleGenerativeAI({ apiKey: process.env.GEMINI_API_KEY })(modelConfigs.agentBeastMode.model);
-    const { object, tokens: { completion, prompt: promptTokens, total } } = await generateObject({
+    const { object, usage: { totalTokens = 0 } = {} } = await generateObject({
       model,
       schema: getSchema(false, false, allowAnswer, false),
       prompt,
       maxTokens: 1000
     });
-    context.tokenTracker.trackUsage('agent', total);
+    context.tokenTracker.trackUsage('agent', totalTokens);
 
     await storeContext(prompt, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
     thisStep = object as StepAction;
