@@ -1,5 +1,3 @@
-// We use the error name string instead of importing the type since we only need it for instanceof check
-
 export interface GenerateObjectResult<T> {
   object: T;
   totalTokens: number;
