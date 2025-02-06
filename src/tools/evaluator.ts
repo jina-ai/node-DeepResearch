@@ -63,7 +63,7 @@ export async function evaluateAnswer(question: string, answer: string, tracker?:
       object = result.object;
       totalTokens = result.usage?.totalTokens || 0;
     } catch (error) {
-      const result = await handleGenerateObjectError<EvaluationResponse>(error, 'evaluator');
+      const result = await handleGenerateObjectError<EvaluationResponse>(error);
       object = result.object;
       totalTokens = result.totalTokens;
     }

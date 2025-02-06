@@ -83,7 +83,7 @@ export async function dedupQueries(newQueries: string[], existingQueries: string
       object = result.object;
       tokens = result.usage?.totalTokens || 0;
     } catch (error) {
-      const result = await handleGenerateObjectError<DedupResponse>(error, 'dedup');
+      const result = await handleGenerateObjectError<DedupResponse>(error);
       object = result.object;
       tokens = result.totalTokens;
     }

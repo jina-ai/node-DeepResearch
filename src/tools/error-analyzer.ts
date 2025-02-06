@@ -118,7 +118,7 @@ export async function analyzeSteps(diaryContext: string[], tracker?: TokenTracke
       object = result.object;
       tokens = result.usage?.totalTokens || 0;
     } catch (error) {
-      const result = await handleGenerateObjectError<ErrorAnalysisResponse>(error, 'error-analyzer');
+      const result = await handleGenerateObjectError<ErrorAnalysisResponse>(error);
       object = result.object;
       tokens = result.totalTokens;
     }

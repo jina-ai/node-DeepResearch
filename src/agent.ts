@@ -360,7 +360,7 @@ export async function getResponse(question: string, tokenBudget: number = 1_000_
       object = result.object;
       totalTokens = result.usage?.totalTokens || 0;
     } catch (error) {
-      const result = await handleGenerateObjectError<StepAction>(error, 'agent');
+      const result = await handleGenerateObjectError<StepAction>(error);
       object = result.object;
       totalTokens = result.totalTokens;
     }
@@ -706,7 +706,7 @@ You decided to think out of the box or cut from a completely different angle.`);
       object = result.object;
       totalTokens = result.usage?.totalTokens || 0;
     } catch (error) {
-      const result = await handleGenerateObjectError<StepAction>(error, 'agent-beast-mode');
+      const result = await handleGenerateObjectError<StepAction>(error);
       object = result.object;
       totalTokens = result.totalTokens;
     }

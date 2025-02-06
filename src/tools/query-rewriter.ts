@@ -108,7 +108,7 @@ export async function rewriteQuery(action: SearchAction, tracker?: TokenTracker)
       object = result.object;
       tokens = result.usage?.totalTokens || 0;
     } catch (error) {
-      const result = await handleGenerateObjectError<KeywordsResponse>(error, 'query-rewriter');
+      const result = await handleGenerateObjectError<KeywordsResponse>(error);
       object = result.object;
       tokens = result.totalTokens;
     }
