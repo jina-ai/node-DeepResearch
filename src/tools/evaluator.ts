@@ -50,18 +50,18 @@ Answer: ${JSON.stringify(answer)}`;
 export async function evaluateAnswer(question: string, answer: string, tracker?: TokenTracker): Promise<{ response: EvaluationResponse, tokens: number }> {
   try {
     const prompt = getPrompt(question, answer);
-    const { object } = await generateObject({
+    const { object, usage: { totalTokens = 0 } = {} } = await generateObject({
       model,
       schema: responseSchema,
-      prompt
+      prompt,
+      maxTokens: 1000
     });
     console.log('Evaluation:', {
       definitive: object.is_definitive,
       reason: object.reasoning
     });
-    const tokens = 0; // TODO: Token tracking not available in new SDK
-    (tracker || new TokenTracker()).trackUsage('evaluator', tokens);
-    return { response: object, tokens };
+    (tracker || new TokenTracker()).trackUsage('evaluator', totalTokens);
+    return { response: object, tokens: totalTokens };
   } catch (error) {
     console.error('Error in answer evaluation:', error);
     throw error;
