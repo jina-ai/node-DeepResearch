@@ -110,13 +110,6 @@ export function getMaxTokens(toolName: ToolName): number {
   return getToolConfig(toolName).maxTokens;
 }
 
-export function getTemperature(toolName: ToolName): number {
-  return getToolConfig(toolName).temperature;
-}
-
-export function getModelName(toolName: ToolName): string {
-  return getToolConfig(toolName).model;
-}
 
 export function getModel(toolName: ToolName) {
   const config = getToolConfig(toolName);
@@ -142,3 +135,5 @@ export const STEP_SLEEP = 1000;
 if (LLM_PROVIDER === 'gemini' && !GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not found");
 if (LLM_PROVIDER === 'openai' && !OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not found");
 if (!JINA_API_KEY) throw new Error("JINA_API_KEY not found");
+
+console.log('LLM Provider:', LLM_PROVIDER)

@@ -25,12 +25,7 @@ flowchart LR
 
 ## Install
 
-We use gemini for llm, [jina reader](https://jina.ai/reader) for searching and reading webpages. 
-
 ```bash
-export GEMINI_API_KEY=...  # for gemini api, ask han
-export JINA_API_KEY=jina_...  # free jina api key, get from https://jina.ai/reader
-
 git clone https://github.com/jina-ai/node-DeepResearch.git
 cd node-DeepResearch
 npm install
@@ -39,7 +34,14 @@ npm install
 
 ## Usage
 
+We use Gemini/OpenAI for reasoning, [Jina Reader](https://jina.ai/reader) for searching and reading webpages, you can get a free API key with 1M tokens from jina.ai. 
+
 ```bash
+export GEMINI_API_KEY=...  # for gemini
+# export OPENAI_API_KEY=... # for openai
+# export LLM_PROVIDER=openai # for openai
+export JINA_API_KEY=jina_...  # free jina api key, get from https://jina.ai/reader
+
 npm run dev $QUERY
 ```
 
