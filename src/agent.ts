@@ -63,21 +63,48 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
   }
 
   // Cast to tuple type with at least one element
-  const schema = z.object({
-    type: z.literal('object'),
-    action: z.enum(['search', 'visit', 'answer', 'reflect']),
-    think: z.string(),
-    ...(allowSearch ? { searchQuery: z.string() } : {}),
-    ...(allowAnswer ? {
+  const variants = [
+    // Search action
+    ...(allowSearch ? [z.object({
+      type: z.literal('object'),
+      action: z.literal('search'),
+      think: z.string(),
+      searchQuery: z.string()
+    })] : []),
+    // Answer action
+    ...(allowAnswer ? [z.object({
+      type: z.literal('object'),
+      action: z.literal('answer'),
+      think: z.string(),
       answer: z.string(),
       references: z.array(z.object({
         exactQuote: z.string(),
         url: z.string()
       }))
-    } : {}),
-    ...(allowReflect ? { questionsToAnswer: z.array(z.string()).max(2) } : {}),
-    ...(allowRead ? { URLTargets: z.array(z.string()).max(2) } : {})
-  });
+    })] : []),
+    // Reflect action
+    ...(allowReflect ? [z.object({
+      type: z.literal('object'),
+      action: z.literal('reflect'),
+      think: z.string(),
+      questionsToAnswer: z.array(z.string()).max(2)
+    })] : []),
+    // Visit action
+    ...(allowRead ? [z.object({
+      type: z.literal('object'),
+      action: z.literal('visit'),
+      think: z.string(),
+      URLTargets: z.array(z.string()).max(2)
+    })] : [])
+  ];
+
+  // Ensure we have at least one variant
+  if (variants.length === 0) {
+    throw new Error('At least one action type must be allowed');
+  }
+
+  // Use discriminated union for schema
+  const schema = z.union(variants);
 
   return schema;
 }
