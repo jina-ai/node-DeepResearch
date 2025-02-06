@@ -61,13 +61,16 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
       .describe('Must be an array of URLs, choose up the most relevant 2 URLs to visit')
   }) : null;
 
-  const schemas = [searchSchema, answerSchema, reflectSchema, visitSchema].filter((s): s is z.ZodObject<any> => s !== null);
+  const validSchemas = [searchSchema, answerSchema, reflectSchema, visitSchema].filter(Boolean);
 
-  if (schemas.length === 0) {
+  if (validSchemas.length === 0) {
     throw new Error('At least one action type must be allowed');
   }
 
-  const schema = z.discriminatedUnion('action', schemas as [z.ZodObject<any>, ...z.ZodObject<any>[]]);
+  // Ensure we have at least one schema for the discriminated union
+  const firstSchema = validSchemas[0] as z.ZodObject<any>;
+  const restSchemas = validSchemas.slice(1) as z.ZodObject<any>[];
+  const schema = z.discriminatedUnion('action', [firstSchema, ...restSchemas]);
 
   return schema;
 }
