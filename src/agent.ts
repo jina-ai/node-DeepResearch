@@ -1,6 +1,6 @@
 import {z} from 'zod';
 import {generateObject} from 'ai';
-import {LLM_PROVIDER, getModel, getMaxTokens, SEARCH_PROVIDER, STEP_SLEEP} from "./config";
+import {getModel, getMaxTokens, SEARCH_PROVIDER, STEP_SLEEP} from "./config";
 import {readUrl} from "./tools/read";
 import {handleGenerateObjectError} from './utils/error-handling';
 import fs from 'fs/promises';

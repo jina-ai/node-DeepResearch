@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { generateObject } from 'ai';
-import { modelConfigs, LLM_PROVIDER, getModel, getMaxTokens } from "../config";
+import { getModel, getMaxTokens } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
 import { ErrorAnalysisResponse } from '../types';
 import { handleGenerateObjectError } from '../utils/error-handling';
