@@ -33,7 +33,8 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
 
   // Since we can't use z.union with Google's API, we'll use a single schema
   // with all possible fields and validate the combinations in runtime
-  const schema = z.discriminatedUnion('action', [
+  // We need at least one variant in the union, so we'll use a never schema if no actions are allowed
+  const variants = [
     // Search action
     ...(allowSearch ? [z.object({
       action: z.literal('search'),
@@ -62,7 +63,11 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
       think: z.string().describe('Explain why choose this action'),
       URLTargets: z.array(z.string()).max(2)
     })] : [])
-  ]);
+  ];
+
+  const schema = variants.length > 0 
+    ? z.discriminatedUnion('action', variants as [z.ZodObject<any>, ...z.ZodObject<any>[]])
+    : z.never();
 
   return schema;
 }
