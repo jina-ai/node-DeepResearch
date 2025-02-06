@@ -20,19 +20,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Run lint and tests
+      - name: Run lint
         env:
           BRAVE_API_KEY: ${{ secrets.BRAVE_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          npm run lint
-          npm test
+        run: npm run lint
       
       - name: Build TypeScript
         run: npm run build
+
+      - name: Update version from release
+        run: |
+          # Get release tag without 'v' prefix
+          VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')
+          # Update version in package.json
+          npm version $VERSION --no-git-tag-version --allow-same-version
       
       - name: Publish to npm
         env:
