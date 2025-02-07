@@ -146,12 +146,12 @@ const configSummary = {
   search: {
     provider: SEARCH_PROVIDER
   },
-  tools: Object.entries(configJson.models[LLM_PROVIDER].tools).reduce((acc, [name]) => ({
-    ...acc,
-    [name]: {
-      ...getToolConfig(name as ToolName)
-    }
-  }), {}),
+  tools: Object.fromEntries(
+    Object.keys(configJson.models[LLM_PROVIDER].tools).map(name => [
+      name,
+      getToolConfig(name as ToolName)
+    ])
+  ),
   defaults: {
     stepSleep: STEP_SLEEP
   }
