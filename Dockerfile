@@ -28,7 +28,8 @@ COPY package*.json ./
 # Install production dependencies only
 RUN npm install --production  --ignore-scripts
 
-# Copy built files from the build stage
+# Copy config.json and built files from builder
+COPY --from=builder /app/config.json ./
 COPY --from=builder /app/dist ./dist
 
 # Set environment variables (Recommended to set at runtime, avoid hardcoding)
