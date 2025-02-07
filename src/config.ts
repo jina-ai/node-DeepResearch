@@ -146,7 +146,7 @@ const configSummary = {
   search: {
     provider: SEARCH_PROVIDER
   },
-  tools: Object.entries(configJson.models[LLM_PROVIDER].tools).reduce((acc, [name, config]) => ({
+  tools: Object.entries(configJson.models[LLM_PROVIDER].tools).reduce((acc, [name]) => ({
     ...acc,
     [name]: {
       ...getToolConfig(name as ToolName)
