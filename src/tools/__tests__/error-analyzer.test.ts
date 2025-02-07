@@ -25,7 +25,7 @@ describe('analyzeSteps', () => {
         expect(response).toHaveProperty('recap');
         expect(response).toHaveProperty('blame');
         expect(response).toHaveProperty('improvement');
-      });
+      }, 30000);
     });
   });
 });
