@@ -66,7 +66,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    // Send initial chunk
+    // Send initial chunk with opening think tag
     const initialChunk: ChatCompletionChunk = {
       id: requestId,
       object: 'chat.completion.chunk',
@@ -75,7 +75,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       system_fingerprint: 'fp_' + requestId,
       choices: [{
         index: 0,
-        delta: { role: 'assistant' },
+        delta: { role: 'assistant', content: '<think>' },
         logprobs: null,
         finish_reason: null
       }]
@@ -140,8 +140,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     }
 
     if (body.stream) {
-      // Send final chunk
-      const finalChunk: ChatCompletionChunk = {
+      // Send closing think tag and final answer
+      const answerChunk: ChatCompletionChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
@@ -149,12 +149,12 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         system_fingerprint: 'fp_' + requestId,
         choices: [{
           index: 0,
-          delta: {},
+          delta: { content: '</think>' + (result.action === 'answer' ? (result as AnswerAction).answer : result.think) },
           logprobs: null,
           finish_reason: 'stop'
         }]
       };
-      res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
+      res.write(`data: ${JSON.stringify(answerChunk)}\n\n`);
       res.end();
     } else {
       const usage = context.tokenTracker.getOpenAIUsage();
