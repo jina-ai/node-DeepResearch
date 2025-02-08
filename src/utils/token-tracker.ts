@@ -58,8 +58,8 @@ export class TokenTracker extends EventEmitter {
       rejected_prediction_tokens: categoryBreakdown.rejected || 0
     };
 
-    // Include completion tokens from both agent and evaluator
-    const completion_tokens = (categoryBreakdown.completion || 0) + 
+    // Only use the detailed token counts for completion tokens
+    const completion_tokens = 
       details.reasoning_tokens + 
       details.accepted_prediction_tokens + 
       details.rejected_prediction_tokens;
