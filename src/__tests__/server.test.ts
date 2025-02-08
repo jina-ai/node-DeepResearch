@@ -85,8 +85,11 @@ describe('/v1/chat/completions', () => {
       let isDone: boolean = false;
       let totalCompletionTokens: number = 0;
       const cleanup = () => {
-        isDone = true;
-        resolve();
+        if (!isDone) {
+          clearTimeout(timeoutHandle);
+          isDone = true;
+          resolve();
+        }
       };
 
       const timeoutHandle = setTimeout(() => {
