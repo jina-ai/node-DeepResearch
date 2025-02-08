@@ -58,14 +58,19 @@ export class TokenTracker extends EventEmitter {
       rejected_prediction_tokens: categoryBreakdown.rejected || 0
     };
 
-    const completion_tokens = details.reasoning_tokens + 
+    // Include completion tokens from both agent and evaluator
+    const completion_tokens = (categoryBreakdown.completion || 0) + 
+      details.reasoning_tokens + 
       details.accepted_prediction_tokens + 
       details.rejected_prediction_tokens;
 
+    const prompt_tokens = categoryBreakdown.prompt || 0;
+    const total_tokens = prompt_tokens + completion_tokens;
+
     return {
-      prompt_tokens: categoryBreakdown.prompt || 0,
+      prompt_tokens,
       completion_tokens,
-      total_tokens: (categoryBreakdown.prompt || 0) + completion_tokens,
+      total_tokens,
       completion_tokens_details: details
     };
   }
@@ -75,17 +80,11 @@ export class TokenTracker extends EventEmitter {
     completionTokens: number;
     totalTokens: number;
   } {
-    const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
-      if (category) {
-        acc[category] = (acc[category] || 0) + tokens;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
+    const openAIUsage = this.getOpenAIUsage();
     return {
-      promptTokens: categoryBreakdown.prompt || 0,
-      completionTokens: categoryBreakdown.completion || 0,
-      totalTokens: categoryBreakdown.prompt + categoryBreakdown.completion
+      promptTokens: openAIUsage.prompt_tokens,
+      completionTokens: openAIUsage.completion_tokens,
+      totalTokens: openAIUsage.total_tokens
     };
   }
 
