@@ -199,9 +199,11 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       res.json(response);
     }
   } catch (error: any) {
-    // Track error as rejected tokens
+    // Track error as rejected tokens with safe token counting
     const errorMessage = error?.message || 'An error occurred';
-    const errorTokens = Math.ceil(errorMessage.split(/\s+/).length / 4);
+    // Ensure safe token counting for error messages
+    const errorTokens = typeof errorMessage === 'string' ? 
+      Math.ceil(errorMessage.split(/\s+/).length / 4) : 1;
     context.tokenTracker.trackUsage('evaluator', errorTokens, 'rejected');
 
     // Clean up event listeners
@@ -211,6 +213,23 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
 
     if (body.stream && res.headersSent) {
       // For streaming responses that have already started, send error as a chunk
+      // First send closing think tag if we're in the middle of thinking
+      const closeThinkChunk: ChatCompletionChunk = {
+        id: requestId,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: body.model,
+        system_fingerprint: 'fp_' + requestId,
+        choices: [{
+          index: 0,
+          delta: { content: '</think>' },
+          logprobs: null,
+          finish_reason: null
+        }]
+      };
+      res.write(`data: ${JSON.stringify(closeThinkChunk)}\n\n`);
+
+      // Then send the error message
       const errorChunk: ChatCompletionChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
