@@ -55,7 +55,7 @@ export class TokenTracker extends EventEmitter {
     return {
       prompt_tokens: categoryBreakdown.prompt || 0,
       completion_tokens: categoryBreakdown.completion || 0,
-      total_tokens: this.getTotalUsage(),
+      total_tokens: categoryBreakdown.prompt + categoryBreakdown.completion,
       completion_tokens_details: {
         reasoning_tokens: categoryBreakdown.reasoning || 0,
         accepted_prediction_tokens: categoryBreakdown.accepted || 0,

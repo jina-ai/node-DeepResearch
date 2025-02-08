@@ -154,7 +154,7 @@ describe('/v1/chat/completions', () => {
           // Verify content chunks have content and accumulate tokens
           chunks.slice(1, -1).forEach(chunk => {
             if (chunk.choices[0].delta.content) {
-              totalCompletionTokens += Buffer.byteLength(chunk.choices[0].delta.content, 'utf-8');
+              totalCompletionTokens += Math.ceil(chunk.choices[0].delta.content.split(/\s+/).length / 4);
             }
             expect(chunk).toMatchObject({
               object: 'chat.completion.chunk',
