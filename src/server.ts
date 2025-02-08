@@ -56,10 +56,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   };
 
   // Track prompt tokens for the initial message
-  if (body?.messages) {
-    const promptTokens = Buffer.byteLength(JSON.stringify(body.messages), 'utf-8');
-    context.tokenTracker.trackUsage('agent', promptTokens, 'prompt');
-  }
+  const promptTokens = Buffer.byteLength(JSON.stringify(body.messages), 'utf-8');
+  context.tokenTracker.trackUsage('agent', promptTokens, 'prompt');
 
   if (body.stream) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -111,9 +109,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   }
 
   try {
-    // Track initial query tokens
-    const queryTokens = Buffer.byteLength(lastMessage.content, 'utf-8');
-    context.tokenTracker.trackUsage('agent', queryTokens, 'prompt');
+    // Track initial query tokens - already tracked above
+    // const queryTokens = Buffer.byteLength(lastMessage.content, 'utf-8');
+    // context.tokenTracker.trackUsage('agent', queryTokens, 'prompt');
 
     const { result } = await getResponse(lastMessage.content, undefined, undefined, context);
     
@@ -173,20 +171,23 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       res.json(response);
     }
   } catch (error: any) {
-    // Clean up event listeners
-    context.actionTracker.removeAllListeners('action');
-    
     // Track error as rejected tokens
     const errorMessage = error?.message || 'An error occurred';
     const errorTokens = Buffer.byteLength(errorMessage, 'utf-8');
     context.tokenTracker.trackUsage('evaluator', errorTokens, 'rejected');
 
-    res.status(500).json({
-      error: {
-        message: errorMessage,
-        type: 'internal_server_error'
-      }
-    });
+    // Clean up event listeners
+    context.actionTracker.removeAllListeners('action');
+
+    // Only send error response if headers haven't been sent
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: {
+          message: errorMessage,
+          type: 'internal_server_error'
+        }
+      });
+    }
   }
 }) as RequestHandler);
 
