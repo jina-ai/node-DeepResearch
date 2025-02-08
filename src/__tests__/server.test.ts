@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { Response } from 'supertest';
 import app from '../server';
 import { OPENAI_API_KEY } from '../config';
 
@@ -57,7 +58,7 @@ describe('/v1/chat/completions', () => {
   it('should handle streaming request', async () => {
     jest.setTimeout(60000); // Increase timeout for streaming test
     
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       request(app)
         .post('/v1/chat/completions')
         .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
@@ -67,13 +68,13 @@ describe('/v1/chat/completions', () => {
           stream: true
         })
         .buffer(true)
-        .parse((res, callback) => {
-          res.data = '';
-          res.on('data', chunk => {
-            res.data += chunk;
+        .parse((res: Response, callback: (err: Error | null, data: string) => void) => {
+          let data = '';
+          res.on('data', (chunk: Buffer) => {
+            data += chunk.toString();
           });
           res.on('end', () => {
-            callback(null, res.data);
+            callback(null, data);
           });
         })
         .end((err, res) => {
@@ -83,10 +84,10 @@ describe('/v1/chat/completions', () => {
           expect(res.headers['content-type']).toBe('text/event-stream');
           
           // Verify stream format and content
-          const chunks = res.body
+          const chunks = (res.body as string)
             .split('\n\n')
-            .filter(chunk => chunk.startsWith('data: '))
-            .map(chunk => JSON.parse(chunk.replace('data: ', '')));
+            .filter((chunk: string) => chunk.startsWith('data: '))
+            .map((chunk: string) => JSON.parse(chunk.replace('data: ', '')));
           
           expect(chunks.length).toBeGreaterThan(0);
           expect(chunks[0]).toMatchObject({
