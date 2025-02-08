@@ -52,15 +52,21 @@ export class TokenTracker extends EventEmitter {
       return acc;
     }, {} as Record<string, number>);
 
+    const details = {
+      reasoning_tokens: categoryBreakdown.reasoning || 0,
+      accepted_prediction_tokens: categoryBreakdown.accepted || 0,
+      rejected_prediction_tokens: categoryBreakdown.rejected || 0
+    };
+
+    const completion_tokens = details.reasoning_tokens + 
+      details.accepted_prediction_tokens + 
+      details.rejected_prediction_tokens;
+
     return {
       prompt_tokens: categoryBreakdown.prompt || 0,
-      completion_tokens: categoryBreakdown.completion || 0,
-      total_tokens: categoryBreakdown.prompt + categoryBreakdown.completion,
-      completion_tokens_details: {
-        reasoning_tokens: categoryBreakdown.reasoning || 0,
-        accepted_prediction_tokens: categoryBreakdown.accepted || 0,
-        rejected_prediction_tokens: categoryBreakdown.rejected || 0
-      }
+      completion_tokens,
+      total_tokens: (categoryBreakdown.prompt || 0) + completion_tokens,
+      completion_tokens_details: details
     };
   }
 
