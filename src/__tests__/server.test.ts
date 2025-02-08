@@ -1,13 +1,14 @@
 import request from 'supertest';
 import app from '../server';
 import { OPENAI_API_KEY } from '../config';
+import { EventEmitter } from 'events';
 
 describe('/v1/chat/completions', () => {
   jest.setTimeout(120000); // Increase timeout for all tests in this suite
   
   afterEach(() => {
     // Clean up any remaining event listeners
-    const emitter = require('events').EventEmitter.prototype;
+    const emitter = EventEmitter.prototype;
     emitter.setMaxListeners(emitter.getMaxListeners() + 1);
   });
   it('should require authentication', async () => {
@@ -83,21 +84,22 @@ describe('/v1/chat/completions', () => {
     return new Promise<void>((resolve, reject) => {
       let isDone = false;
       let totalCompletionTokens = 0;
-      let timeoutId: NodeJS.Timeout;
-
+      let timeoutHandle: NodeJS.Timeout;
+      
       const cleanup = () => {
-        if (timeoutId) clearTimeout(timeoutId);
+        if (timeoutHandle) clearTimeout(timeoutHandle);
         isDone = true;
         resolve();
       };
 
-      // Set timeout to prevent test from hanging
-      timeoutId = setTimeout(() => {
+      timeoutHandle = setTimeout(() => {
         if (!isDone) {
           cleanup();
           reject(new Error('Test timed out'));
         }
       }, 30000);
+
+
       request(app)
         .post('/v1/chat/completions')
         .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
