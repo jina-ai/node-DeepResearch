@@ -31,9 +31,12 @@ export type VisitAction = BaseAction & {
 export type StepAction = SearchAction | AnswerAction | ReflectAction | VisitAction;
 
 // Response Types
+export type TokenCategory = 'prompt' | 'completion' | 'reasoning' | 'accepted' | 'rejected';
+
 export interface TokenUsage {
   tool: string;
   tokens: number;
+  category?: TokenCategory;
 }
 
 export interface SearchResponse {
