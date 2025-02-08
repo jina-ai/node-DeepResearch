@@ -7,8 +7,6 @@ import {GEMINI_API_KEY} from '../config';
 import {z} from 'zod';
 import {AnswerAction, TrackerContext} from "../types";
 import {createGoogleGenerativeAI} from "@ai-sdk/google";
-import {TokenTracker} from "../utils/token-tracker";
-import {ActionTracker} from "../utils/action-tracker";
 
 const execAsync = promisify(exec);
 
