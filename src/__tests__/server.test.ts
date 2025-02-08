@@ -225,7 +225,7 @@ describe('/v1/chat/completions', () => {
     });
   });
 
-  it('should provide token usage in Vercel AI SDK format', async () => {
+  it('should provide token usage in OpenAI and Vercel AI SDK formats', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
       .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
@@ -234,25 +234,30 @@ describe('/v1/chat/completions', () => {
         messages: [{ role: 'user', content: 'test' }]
       });
     
+    expect(response.status).toBe(200);
     const usage = response.body.usage;
+
+    // Verify OpenAI format
     expect(usage).toMatchObject({
       prompt_tokens: expect.any(Number),
       completion_tokens: expect.any(Number),
-      total_tokens: expect.any(Number)
+      total_tokens: expect.any(Number),
+      completion_tokens_details: {
+        reasoning_tokens: expect.any(Number),
+        accepted_prediction_tokens: expect.any(Number),
+        rejected_prediction_tokens: expect.any(Number)
+      }
     });
 
-    // Verify OpenAI format matches expected Vercel format
-    expect(usage).toMatchObject({
-      prompt_tokens: expect.any(Number),
-      completion_tokens: expect.any(Number),
-      total_tokens: expect.any(Number)
-    });
-
-    // Verify token counts are consistent
+    // Verify token counts are consistent with Vercel format expectations
     expect(usage.total_tokens).toBe(usage.prompt_tokens + usage.completion_tokens);
-
-    // Verify token counts are reasonable
     expect(usage.prompt_tokens).toBeGreaterThan(0);
     expect(usage.completion_tokens).toBeGreaterThan(0);
+
+    // Verify completion token details are consistent
+    const details = usage.completion_tokens_details;
+    expect(usage.completion_tokens).toBe(
+      details.reasoning_tokens + details.accepted_prediction_tokens + details.rejected_prediction_tokens
+    );
   });
 });
