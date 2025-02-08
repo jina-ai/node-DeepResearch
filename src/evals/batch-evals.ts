@@ -184,27 +184,6 @@ async function batchEvaluate(inputFile: string): Promise<void> {
     }
   }
 
-  async function getResponseStreamingAgent(query: string) {
-    const res = await fetch("http://localhost:3000/chat", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({query})
-    })
-    const text = await res.text()
-    return {
-      result: {
-        think: '',
-        action: 'answer',
-        answer: text.split("RESPONSE_START")[1].split("RESPONSE_END")[0].trim(),
-        references: []
-      },
-      context: {
-         tokenTracker: new TokenTracker(),
-         actionTracker: new ActionTracker()
-      }
-    }
-  }
-
   // Calculate and print statistics
   const stats = calculateStats(results, modelName);
   printStats(stats);
