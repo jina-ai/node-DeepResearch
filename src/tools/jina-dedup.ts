@@ -97,6 +97,15 @@ export async function dedupQueries(
     const allQueries = [...newQueries, ...existingQueries];
     const { embeddings: allEmbeddings, tokens } = await getEmbeddings(allQueries);
 
+    // If embeddings is empty (due to 402 error), return all new queries
+    if (!allEmbeddings.length) {
+      console.log('Dedup (no embeddings):', newQueries);
+      return {
+        unique_queries: newQueries,
+        tokens: 0
+      };
+    }
+
     // Split embeddings back into new and existing
     const newEmbeddings = allEmbeddings.slice(0, newQueries.length);
     const existingEmbeddings = allEmbeddings.slice(newQueries.length);
