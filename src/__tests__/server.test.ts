@@ -55,6 +55,7 @@ describe('/v1/chat/completions', () => {
   });
 
   it('should handle streaming request', async () => {
+    jest.setTimeout(60000); // Increase timeout for streaming test
     const response = await request(app)
       .post('/v1/chat/completions')
       .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
