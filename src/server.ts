@@ -82,8 +82,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     };
     res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
 
-    // Set up progress listener
-    context.actionTracker.on('action', (action) => {
+    // Set up progress listener with cleanup
+    const actionListener = (action: any) => {
       // Track completion tokens for each chunk
       const chunkTokens = Buffer.byteLength(action.think, 'utf-8');
       context.tokenTracker.trackUsage('agent', chunkTokens, 'completion');
@@ -101,6 +101,12 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         }]
       };
       res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    };
+    context.actionTracker.on('action', actionListener);
+    
+    // Clean up listener on response finish
+    res.on('finish', () => {
+      context.actionTracker.removeListener('action', actionListener);
     });
   }
 
@@ -167,6 +173,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       res.json(response);
     }
   } catch (error: any) {
+    // Clean up event listeners
+    context.actionTracker.removeAllListeners('action');
+    
     // Track error as rejected tokens
     const errorMessage = error?.message || 'An error occurred';
     const errorTokens = Buffer.byteLength(errorMessage, 'utf-8');

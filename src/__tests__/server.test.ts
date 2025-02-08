@@ -4,6 +4,12 @@ import { OPENAI_API_KEY } from '../config';
 
 describe('/v1/chat/completions', () => {
   jest.setTimeout(120000); // Increase timeout for all tests in this suite
+  
+  afterEach(() => {
+    // Clean up any remaining event listeners
+    const emitter = require('events').EventEmitter.prototype;
+    emitter.setMaxListeners(emitter.getMaxListeners() + 1);
+  });
   it('should require authentication', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
@@ -77,6 +83,21 @@ describe('/v1/chat/completions', () => {
     return new Promise<void>((resolve, reject) => {
       let isDone = false;
       let totalCompletionTokens = 0;
+      let timeoutId: NodeJS.Timeout;
+
+      const cleanup = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        isDone = true;
+        resolve();
+      };
+
+      // Set timeout to prevent test from hanging
+      timeoutId = setTimeout(() => {
+        if (!isDone) {
+          cleanup();
+          reject(new Error('Test timed out'));
+        }
+      }, 30000);
       request(app)
         .post('/v1/chat/completions')
         .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
@@ -160,10 +181,9 @@ describe('/v1/chat/completions', () => {
           // Verify we tracked some completion tokens
           expect(totalCompletionTokens).toBeGreaterThan(0);
           
-          // Only resolve once to prevent multiple resolves
+          // Clean up and resolve
           if (!isDone) {
-            isDone = true;
-            resolve();
+            cleanup();
           }
         });
     });
