@@ -82,8 +82,8 @@ describe('/v1/chat/completions', () => {
 
   it('should handle streaming request and track tokens correctly', async () => {
     return new Promise<void>((resolve, reject) => {
-      let isDone = false;
-      let totalCompletionTokens = 0;
+      let isDone: boolean = false;
+      let totalCompletionTokens: number = 0;
       const cleanup = () => {
         isDone = true;
         resolve();
