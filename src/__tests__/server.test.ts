@@ -3,6 +3,7 @@ import app from '../server';
 import { OPENAI_API_KEY } from '../config';
 
 describe('/v1/chat/completions', () => {
+  jest.setTimeout(60000); // Increase timeout for all tests in this suite
   it('should require authentication', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
@@ -55,9 +56,8 @@ describe('/v1/chat/completions', () => {
   });
 
   it('should handle streaming request', async () => {
-    jest.setTimeout(60000); // Increase timeout for streaming test
-    
     return new Promise<void>((resolve, reject) => {
+      let isDone = false;
       request(app)
         .post('/v1/chat/completions')
         .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
@@ -88,28 +88,31 @@ describe('/v1/chat/completions', () => {
           expect(res.headers['content-type']).toBe('text/event-stream');
           
           // Verify stream format and content
+          if (isDone) return; // Prevent multiple resolves
+          
           const responseText = res.body as string;
           const chunks = responseText
             .split('\n\n')
             .filter((line: string) => line.startsWith('data: '))
             .map((line: string) => JSON.parse(line.replace('data: ', '')));
           
-          expect(chunks.length).toBeGreaterThan(0);
-          expect(chunks[0]).toMatchObject({
-            id: expect.any(String),
-            object: 'chat.completion.chunk',
-            choices: [{
-              index: 0,
-              delta: { role: 'assistant' },
-              logprobs: null,
-              finish_reason: null
-            }]
-          });
-          
-          // Last chunk should have finish_reason: "stop"
-          expect(chunks[chunks.length - 1].choices[0].finish_reason).toBe('stop');
-          
-          resolve();
+          // Only resolve once we have all chunks including the final one
+          const lastChunk = chunks[chunks.length - 1];
+          if (lastChunk?.choices?.[0]?.finish_reason === 'stop') {
+            isDone = true;
+            expect(chunks.length).toBeGreaterThan(0);
+            expect(chunks[0]).toMatchObject({
+              id: expect.any(String),
+              object: 'chat.completion.chunk',
+              choices: [{
+                index: 0,
+                delta: { role: 'assistant' },
+                logprobs: null,
+                finish_reason: null
+              }]
+            });
+            resolve();
+          }
         });
     });
   });
