@@ -193,6 +193,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     // Clean up event listeners
     context.actionTracker.removeAllListeners('action');
 
+    const usage = context.tokenTracker.getOpenAIUsage();
+
     if (body.stream && res.headersSent) {
       // For streaming responses that have already started, send error as a chunk
       const errorChunk: ChatCompletionChunk = {
@@ -212,12 +214,24 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       res.end();
     } else {
       // For non-streaming or not-yet-started responses, send error as JSON
-      res.status(500).json({
-        error: {
-          message: errorMessage,
-          type: 'internal_server_error'
-        }
-      });
+      const response: ChatCompletionResponse = {
+        id: requestId,
+        object: 'chat.completion',
+        created: Math.floor(Date.now() / 1000),
+        model: body.model,
+        system_fingerprint: 'fp_' + requestId,
+        choices: [{
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: `Error: ${errorMessage}`
+          },
+          logprobs: null,
+          finish_reason: 'stop'
+        }],
+        usage
+      };
+      res.json(response);
     }
   }
 }) as RequestHandler);
