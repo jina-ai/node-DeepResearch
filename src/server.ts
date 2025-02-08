@@ -84,9 +84,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
 
     // Set up progress listener with cleanup
     const actionListener = (action: any) => {
-      // Track completion tokens for each chunk
+      // Track reasoning tokens for each chunk
       const chunkTokens = Math.ceil(action.think.split(/\s+/).length / 4);
-      context.tokenTracker.trackUsage('agent', chunkTokens, 'completion');
+      context.tokenTracker.trackUsage('evaluator', chunkTokens, 'reasoning');
       const chunk: ChatCompletionChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
@@ -128,13 +128,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       }
     }
     
-    // Track reasoning tokens from evaluator and completion tokens
+    // Track tokens based on action type
     if (result.action === 'answer') {
-      // Track reasoning tokens from the think step
-      const reasoningTokens = Math.ceil(result.think.split(/\s+/).length / 4);
-      context.tokenTracker.trackUsage('evaluator', reasoningTokens, 'reasoning');
-      
-      // Track accepted prediction tokens since this was a successful answer
+      // Track accepted prediction tokens for the final answer
       const answerTokens = Math.ceil(((result as AnswerAction).answer).split(/\s+/).length / 4);
       context.tokenTracker.trackUsage('evaluator', answerTokens, 'accepted');
     } else {
