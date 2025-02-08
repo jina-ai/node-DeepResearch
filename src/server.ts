@@ -56,8 +56,10 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   };
 
   // Track prompt tokens for the initial message
-  const promptTokens = Math.ceil(lastMessage.content.split(/\s+/).length / 4);
-  context.tokenTracker.trackUsage('agent', promptTokens, 'prompt');
+  const messageTokens = body.messages.reduce((total, msg) => {
+    return total + Math.ceil(msg.content.split(/\s+/).length / 4);
+  }, 0);
+  context.tokenTracker.trackUsage('agent', messageTokens, 'prompt');
 
   if (body.stream) {
     res.setHeader('Content-Type', 'text/event-stream');
