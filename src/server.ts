@@ -37,10 +37,20 @@ interface QueryRequest extends Request {
 
 // OpenAI-compatible chat completions endpoint
 app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
+  // Log request details (excluding sensitive data)
+  console.log('[chat/completions] Request:', {
+    model: req.body.model,
+    stream: req.body.stream,
+    messageCount: req.body.messages?.length,
+    hasAuth: !!req.headers.authorization,
+    requestId: Date.now().toString()
+  });
+
   // Only check auth if secret is provided
   if (secret) {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ') || auth.split(' ')[1] !== secret) {
+      console.log('[chat/completions] Unauthorized request');
       return res.status(401).json({ error: 'Unauthorized' });
     }
   }
@@ -105,7 +115,13 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
           finish_reason: null
         }]
       };
-      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      const chunkStr = `data: ${JSON.stringify(chunk)}\n\n`;
+      console.log('[chat/completions] Sending chunk:', {
+        id: chunk.id,
+        content: chunk.choices[0].delta.content,
+        finish_reason: chunk.choices[0].finish_reason
+      });
+      res.write(chunkStr);
     };
     context.actionTracker.on('action', actionListener);
     
@@ -196,9 +212,26 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         }],
         usage
       };
+      
+      // Log final response (excluding full content for brevity)
+      console.log('[chat/completions] Response:', {
+        id: response.id,
+        status: 200,
+        contentLength: response.choices[0].message.content.length,
+        usage: response.usage
+      });
+      
       res.json(response);
     }
   } catch (error: any) {
+    // Log error details
+    console.error('[chat/completions] Error:', {
+      message: error?.message || 'An error occurred',
+      stack: error?.stack,
+      type: error?.constructor?.name,
+      requestId
+    });
+
     // Track error as rejected tokens with safe token counting
     const errorMessage = error?.message || 'An error occurred';
     // Ensure safe token counting for error messages
