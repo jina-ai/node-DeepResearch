@@ -224,4 +224,35 @@ describe('/v1/chat/completions', () => {
       }
     });
   });
+
+  it('should provide token usage in Vercel AI SDK format', async () => {
+    const response = await request(app)
+      .post('/v1/chat/completions')
+      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .send({
+        model: 'test-model',
+        messages: [{ role: 'user', content: 'test' }]
+      });
+    
+    const usage = response.body.usage;
+    expect(usage).toMatchObject({
+      prompt_tokens: expect.any(Number),
+      completion_tokens: expect.any(Number),
+      total_tokens: expect.any(Number)
+    });
+
+    // Verify OpenAI format matches expected Vercel format
+    expect(usage).toMatchObject({
+      prompt_tokens: expect.any(Number),
+      completion_tokens: expect.any(Number),
+      total_tokens: expect.any(Number)
+    });
+
+    // Verify token counts are consistent
+    expect(usage.total_tokens).toBe(usage.prompt_tokens + usage.completion_tokens);
+
+    // Verify token counts are reasonable
+    expect(usage.prompt_tokens).toBeGreaterThan(0);
+    expect(usage.completion_tokens).toBeGreaterThan(0);
+  });
 });
