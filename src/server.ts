@@ -52,6 +52,12 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     actionTracker: new ActionTracker()
   };
 
+  // Track prompt tokens for the initial message
+  if (body?.messages) {
+    const promptTokens = Buffer.byteLength(JSON.stringify(body.messages), 'utf-8');
+    context.tokenTracker.trackUsage('agent', promptTokens, 'prompt');
+  }
+
   if (body.stream) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -75,6 +81,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
 
     // Set up progress listener
     context.actionTracker.on('action', (action) => {
+      // Track completion tokens for each chunk
+      const chunkTokens = Buffer.byteLength(action.think, 'utf-8');
+      context.tokenTracker.trackUsage('agent', chunkTokens, 'completion');
       const chunk: ChatCompletionChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
@@ -93,7 +102,29 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   }
 
   try {
+    // Track initial query tokens
+    const queryTokens = Buffer.byteLength(lastMessage.content, 'utf-8');
+    context.tokenTracker.trackUsage('agent', queryTokens, 'prompt');
+
     const { result } = await getResponse(lastMessage.content, undefined, undefined, context);
+    
+    // Track reasoning tokens from evaluator and completion tokens
+    if (result.action === 'answer') {
+      // Track reasoning tokens from the think step
+      const reasoningTokens = Buffer.byteLength(result.think, 'utf-8');
+      context.tokenTracker.trackUsage('evaluator', reasoningTokens, 'reasoning');
+      
+      // Track completion tokens for the final answer
+      const completionTokens = Buffer.byteLength((result as AnswerAction).answer, 'utf-8');
+      context.tokenTracker.trackUsage('agent', completionTokens, 'completion');
+
+      // Track accepted prediction tokens since this was a successful answer
+      context.tokenTracker.trackUsage('evaluator', completionTokens, 'accepted');
+    } else {
+      // Track rejected prediction tokens for non-answer responses
+      const rejectedTokens = Buffer.byteLength(result.think, 'utf-8');
+      context.tokenTracker.trackUsage('evaluator', rejectedTokens, 'rejected');
+    }
 
     if (body.stream) {
       // Send final chunk
@@ -128,23 +159,19 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
           logprobs: null,
           finish_reason: 'stop'
         }],
-        usage: {
-          prompt_tokens: context.tokenTracker.getUsageBreakdown().prompt || 0,
-          completion_tokens: context.tokenTracker.getUsageBreakdown().completion || 0,
-          total_tokens: context.tokenTracker.getTotalUsage(),
-          completion_tokens_details: {
-            reasoning_tokens: context.tokenTracker.getUsageBreakdown().reasoning || 0,
-            accepted_prediction_tokens: context.tokenTracker.getUsageBreakdown().accepted || 0,
-            rejected_prediction_tokens: context.tokenTracker.getUsageBreakdown().rejected || 0
-          }
-        }
+        usage: context.tokenTracker.getOpenAIUsage()
       };
       res.json(response);
     }
   } catch (error: any) {
+    // Track error as rejected tokens
+    const errorMessage = error?.message || 'An error occurred';
+    const errorTokens = Buffer.byteLength(errorMessage, 'utf-8');
+    context.tokenTracker.trackUsage('evaluator', errorTokens, 'rejected');
+
     res.status(500).json({
       error: {
-        message: error?.message || 'An error occurred',
+        message: errorMessage,
         type: 'internal_server_error'
       }
     });
