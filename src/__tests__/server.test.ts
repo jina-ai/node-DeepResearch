@@ -41,23 +41,42 @@ describe('/v1/chat/completions', () => {
         message: {
           role: 'assistant'
         }
-      }],
-      usage: {
-        total_tokens: expect.any(Number),
-        prompt_tokens: expect.any(Number),
-        completion_tokens: expect.any(Number),
-        completion_tokens_details: {
-          reasoning_tokens: expect.any(Number),
-          accepted_prediction_tokens: expect.any(Number),
-          rejected_prediction_tokens: expect.any(Number)
-        }
-      }
+      }]
     });
   });
 
-  it('should handle streaming request', async () => {
+  it('should track tokens correctly in non-streaming response', async () => {
+    const response = await request(app)
+      .post('/v1/chat/completions')
+      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .send({
+        model: 'test-model',
+        messages: [{ role: 'user', content: 'test' }]
+      });
+    
+    expect(response.body.usage).toMatchObject({
+      prompt_tokens: expect.any(Number),
+      completion_tokens: expect.any(Number),
+      total_tokens: expect.any(Number),
+      completion_tokens_details: {
+        reasoning_tokens: expect.any(Number),
+        accepted_prediction_tokens: expect.any(Number),
+        rejected_prediction_tokens: expect.any(Number)
+      }
+    });
+
+    // Verify token counts are reasonable
+    expect(response.body.usage.prompt_tokens).toBeGreaterThan(0);
+    expect(response.body.usage.completion_tokens).toBeGreaterThan(0);
+    expect(response.body.usage.total_tokens).toBe(
+      response.body.usage.prompt_tokens + response.body.usage.completion_tokens
+    );
+  });
+
+  it('should handle streaming request and track tokens correctly', async () => {
     return new Promise<void>((resolve, reject) => {
       let isDone = false;
+      let totalCompletionTokens = 0;
       request(app)
         .post('/v1/chat/completions')
         .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
@@ -101,6 +120,8 @@ describe('/v1/chat/completions', () => {
           if (lastChunk?.choices?.[0]?.finish_reason === 'stop') {
             isDone = true;
             expect(chunks.length).toBeGreaterThan(0);
+            
+            // Verify initial chunk format
             expect(chunks[0]).toMatchObject({
               id: expect.any(String),
               object: 'chat.completion.chunk',
@@ -111,9 +132,70 @@ describe('/v1/chat/completions', () => {
                 finish_reason: null
               }]
             });
+
+            // Verify content chunks have content and accumulate tokens
+            chunks.slice(1, -1).forEach(chunk => {
+              if (chunk.choices[0].delta.content) {
+                totalCompletionTokens += Buffer.byteLength(chunk.choices[0].delta.content, 'utf-8');
+              }
+              expect(chunk).toMatchObject({
+                object: 'chat.completion.chunk',
+                choices: [{
+                  delta: expect.objectContaining({
+                    content: expect.any(String)
+                  })
+                }]
+              });
+            });
+
+            // Verify final chunk format
+            expect(lastChunk).toMatchObject({
+              object: 'chat.completion.chunk',
+              choices: [{
+                delta: {},
+                finish_reason: 'stop'
+              }]
+            });
+
+            // Verify we tracked some completion tokens
+            expect(totalCompletionTokens).toBeGreaterThan(0);
             resolve();
           }
         });
+    });
+  });
+
+  it('should track tokens correctly in error response', async () => {
+    const response = await request(app)
+      .post('/v1/chat/completions')
+      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .send({
+        model: 'test-model',
+        messages: [] // Invalid messages array
+      });
+    
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('error');
+    
+    // Make another request to verify token tracking after error
+    const validResponse = await request(app)
+      .post('/v1/chat/completions')
+      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .send({
+        model: 'test-model',
+        messages: [{ role: 'user', content: 'test' }]
+      });
+    
+    // Verify token tracking still works after error
+    expect(validResponse.body.usage).toMatchObject({
+      prompt_tokens: expect.any(Number),
+      completion_tokens: expect.any(Number),
+      total_tokens: expect.any(Number),
+      completion_tokens_details: {
+        reasoning_tokens: expect.any(Number),
+        accepted_prediction_tokens: expect.any(Number),
+        rejected_prediction_tokens: expect.any(Number)
+      }
     });
   });
 });
