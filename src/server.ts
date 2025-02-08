@@ -115,7 +115,17 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     // const queryTokens = Buffer.byteLength(lastMessage.content, 'utf-8');
     // context.tokenTracker.trackUsage('agent', queryTokens, 'prompt');
 
-    const { result } = await getResponse(lastMessage.content, undefined, undefined, context);
+    let result;
+    try {
+      ({ result } = await getResponse(lastMessage.content, undefined, undefined, context));
+    } catch (error) {
+      // If deduplication fails, continue without it
+      if (error?.response?.status === 402) {
+        ({ result } = await getResponse(lastMessage.content, undefined, { skipDedup: true }, context));
+      } else {
+        throw error;
+      }
+    }
     
     // Track reasoning tokens from evaluator and completion tokens
     if (result.action === 'answer') {
@@ -153,6 +163,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
       res.end();
     } else {
+      const usage = context.tokenTracker.getOpenAIUsage();
       const response: ChatCompletionResponse = {
         id: requestId,
         object: 'chat.completion',
@@ -168,7 +179,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
           logprobs: null,
           finish_reason: 'stop'
         }],
-        usage: context.tokenTracker.getOpenAIUsage()
+        usage
       };
       res.json(response);
     }
