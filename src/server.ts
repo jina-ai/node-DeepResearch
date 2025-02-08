@@ -11,7 +11,6 @@ import {
   ChatCompletionChunk,
   AnswerAction
 } from './types';
-import { OPENAI_API_KEY } from './config';
 import fs from 'fs/promises';
 import path from 'path';
 import {TokenTracker} from "./utils/token-tracker";
@@ -19,6 +18,9 @@ import {ActionTracker} from "./utils/action-tracker";
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Get secret from command line args for optional authentication
+const secret = process.argv.find(arg => arg.startsWith('--secret='))?.split('=')[1];
 
 app.use(cors());
 app.use(express.json());
@@ -35,9 +37,12 @@ interface QueryRequest extends Request {
 
 // OpenAI-compatible chat completions endpoint
 app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ') || auth.split(' ')[1] !== OPENAI_API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Only check auth if secret is provided
+  if (secret) {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ') || auth.split(' ')[1] !== secret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
   }
 
   const body = req.body as ChatCompletionRequest;

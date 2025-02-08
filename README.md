@@ -107,10 +107,103 @@ export DEFAULT_MODEL_NAME=qwen2.5-7b  # your local llm model name
 
 Start the server:
 ```bash
+# Without authentication
 npm run serve
+
+# With authentication (clients must provide this secret as Bearer token)
+npm run serve --secret=your_secret_token
 ```
 
 The server will start on http://localhost:3000 with the following endpoints:
+
+### POST /v1/chat/completions
+OpenAI-compatible chat completions endpoint:
+```bash
+# Without authentication
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello!"
+      }
+    ]
+  }'
+
+# With authentication (when server is started with --secret)
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_secret_token" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello!"
+      }
+    ],
+    "stream": true
+  }'
+```
+
+Response format:
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1677652288,
+  "model": "gpt-4o-mini",
+  "system_fingerprint": "fp_44709d6fcb",
+  "choices": [{
+    "index": 0,
+    "message": {
+      "role": "assistant",
+      "content": "YOUR FINAL ANSWER"
+    },
+    "logprobs": null,
+    "finish_reason": "stop"
+  }],
+  "usage": {
+    "prompt_tokens": 9,
+    "completion_tokens": 12,
+    "total_tokens": 21,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  }
+}
+```
+
+For streaming responses (stream: true), the server sends chunks in this format:
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion.chunk",
+  "created": 1694268190,
+  "model": "gpt-4o-mini",
+  "system_fingerprint": "fp_44709d6fcb",
+  "choices": [{
+    "index": 0,
+    "delta": {
+      "content": "..."
+    },
+    "logprobs": null,
+    "finish_reason": null
+  }]
+}
+```
+
+Note: The think content in streaming responses is wrapped in XML tags:
+```
+<think>
+[thinking steps...]
+</think>
+[final answer]
+```
 
 ### POST /api/v1/query
 Submit a query to be answered:
