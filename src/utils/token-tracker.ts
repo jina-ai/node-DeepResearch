@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 
-import { TokenUsage } from '../types';
+import { TokenUsage, TokenCategory } from '../types';
 
 export class TokenTracker extends EventEmitter {
   private usages: TokenUsage[] = [];
@@ -11,15 +11,16 @@ export class TokenTracker extends EventEmitter {
     this.budget = budget;
   }
 
-  trackUsage(tool: string, tokens: number) {
+  trackUsage(tool: string, tokens: number, category?: TokenCategory) {
     const currentTotal = this.getTotalUsage();
     if (this.budget && currentTotal + tokens > this.budget) {
       console.error(`Token budget exceeded: ${currentTotal + tokens} > ${this.budget}`);
     }
     // Only track usage if we're within budget
     if (!this.budget || currentTotal + tokens <= this.budget) {
-      this.usages.push({ tool, tokens });
-      this.emit('usage', { tool, tokens });
+      const usage = { tool, tokens, category };
+      this.usages.push(usage);
+      this.emit('usage', usage);
     }
   }
 
