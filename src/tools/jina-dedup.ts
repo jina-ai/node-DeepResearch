@@ -66,8 +66,14 @@ async function getEmbeddings(queries: string[]): Promise<{ embeddings: number[][
       embeddings,
       tokens: response.data.usage.total_tokens
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting embeddings from Jina:', error);
+    if (error?.response?.status === 402) {
+      return {
+        embeddings: [],
+        tokens: 0
+      };
+    }
     throw error;
   }
 }
