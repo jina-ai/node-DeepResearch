@@ -56,7 +56,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   };
 
   // Track prompt tokens for the initial message
-  const promptTokens = Buffer.byteLength(JSON.stringify(body.messages), 'utf-8');
+  const promptTokens = Math.ceil(lastMessage.content.split(/\s+/).length / 4);
   context.tokenTracker.trackUsage('agent', promptTokens, 'prompt');
 
   if (body.stream) {
@@ -83,7 +83,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     // Set up progress listener with cleanup
     const actionListener = (action: any) => {
       // Track completion tokens for each chunk
-      const chunkTokens = Buffer.byteLength(action.think, 'utf-8');
+      const chunkTokens = Math.ceil(action.think.split(/\s+/).length / 4);
       context.tokenTracker.trackUsage('agent', chunkTokens, 'completion');
       const chunk: ChatCompletionChunk = {
         id: requestId,
@@ -118,11 +118,11 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     // Track reasoning tokens from evaluator and completion tokens
     if (result.action === 'answer') {
       // Track reasoning tokens from the think step
-      const reasoningTokens = Buffer.byteLength(result.think, 'utf-8');
+      const reasoningTokens = Math.ceil(result.think.split(/\s+/).length / 4);
       context.tokenTracker.trackUsage('evaluator', reasoningTokens, 'reasoning');
       
       // Track completion tokens for the final answer
-      const completionTokens = Buffer.byteLength((result as AnswerAction).answer, 'utf-8');
+      const completionTokens = Math.ceil(((result as AnswerAction).answer).split(/\s+/).length / 4);
       context.tokenTracker.trackUsage('agent', completionTokens, 'completion');
 
       // Track accepted prediction tokens since this was a successful answer
@@ -173,14 +173,31 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   } catch (error: any) {
     // Track error as rejected tokens
     const errorMessage = error?.message || 'An error occurred';
-    const errorTokens = Buffer.byteLength(errorMessage, 'utf-8');
+    const errorTokens = Math.ceil(errorMessage.split(/\s+/).length / 4);
     context.tokenTracker.trackUsage('evaluator', errorTokens, 'rejected');
 
     // Clean up event listeners
     context.actionTracker.removeAllListeners('action');
 
-    // Only send error response if headers haven't been sent
-    if (!res.headersSent) {
+    if (body.stream && res.headersSent) {
+      // For streaming responses that have already started, send error as a chunk
+      const errorChunk: ChatCompletionChunk = {
+        id: requestId,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: body.model,
+        system_fingerprint: 'fp_' + requestId,
+        choices: [{
+          index: 0,
+          delta: { content: `Error: ${errorMessage}` },
+          logprobs: null,
+          finish_reason: 'stop'
+        }]
+      };
+      res.write(`data: ${JSON.stringify(errorChunk)}\n\n`);
+      res.end();
+    } else {
+      // For non-streaming or not-yet-started responses, send error as JSON
       res.status(500).json({
         error: {
           message: errorMessage,
