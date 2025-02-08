@@ -115,7 +115,18 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     // const queryTokens = Buffer.byteLength(lastMessage.content, 'utf-8');
     // context.tokenTracker.trackUsage('agent', queryTokens, 'prompt');
 
-    const { result } = await getResponse(lastMessage.content, undefined, undefined, context);
+    let result;
+    try {
+      ({ result } = await getResponse(lastMessage.content, undefined, undefined, context));
+    } catch (error: any) {
+      // If deduplication fails, retry without it
+      if (error?.response?.status === 402) {
+        // If deduplication fails, retry with maxBadAttempt=3 to skip dedup
+        ({ result } = await getResponse(lastMessage.content, undefined, 3, context));
+      } else {
+        throw error;
+      }
+    }
     
     // Track reasoning tokens from evaluator and completion tokens
     if (result.action === 'answer') {
