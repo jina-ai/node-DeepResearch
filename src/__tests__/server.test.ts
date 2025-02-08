@@ -56,15 +56,55 @@ describe('/v1/chat/completions', () => {
 
   it('should handle streaming request', async () => {
     jest.setTimeout(60000); // Increase timeout for streaming test
-    const response = await request(app)
-      .post('/v1/chat/completions')
-      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
-      .send({
-        model: 'test-model',
-        messages: [{ role: 'user', content: 'test' }],
-        stream: true
-      });
-    expect(response.status).toBe(200);
-    expect(response.headers['content-type']).toBe('text/event-stream');
+    
+    return new Promise((resolve, reject) => {
+      request(app)
+        .post('/v1/chat/completions')
+        .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+        .send({
+          model: 'test-model',
+          messages: [{ role: 'user', content: 'test' }],
+          stream: true
+        })
+        .buffer(true)
+        .parse((res, callback) => {
+          res.data = '';
+          res.on('data', chunk => {
+            res.data += chunk;
+          });
+          res.on('end', () => {
+            callback(null, res.data);
+          });
+        })
+        .end((err, res) => {
+          if (err) return reject(err);
+          
+          expect(res.status).toBe(200);
+          expect(res.headers['content-type']).toBe('text/event-stream');
+          
+          // Verify stream format and content
+          const chunks = res.body
+            .split('\n\n')
+            .filter(chunk => chunk.startsWith('data: '))
+            .map(chunk => JSON.parse(chunk.replace('data: ', '')));
+          
+          expect(chunks.length).toBeGreaterThan(0);
+          expect(chunks[0]).toMatchObject({
+            id: expect.any(String),
+            object: 'chat.completion.chunk',
+            choices: [{
+              index: 0,
+              delta: { role: 'assistant' },
+              logprobs: null,
+              finish_reason: null
+            }]
+          });
+          
+          // Last chunk should have finish_reason: "stop"
+          expect(chunks[chunks.length - 1].choices[0].finish_reason).toBe('stop');
+          
+          resolve();
+        });
+    });
   });
 });
