@@ -140,7 +140,23 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     }
 
     if (body.stream) {
-      // Send closing think tag and final answer
+      // Send closing think tag
+      const closeThinkChunk: ChatCompletionChunk = {
+        id: requestId,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: body.model,
+        system_fingerprint: 'fp_' + requestId,
+        choices: [{
+          index: 0,
+          delta: { content: '</think>' },
+          logprobs: null,
+          finish_reason: null
+        }]
+      };
+      res.write(`data: ${JSON.stringify(closeThinkChunk)}\n\n`);
+
+      // Send final answer as separate chunk
       const answerChunk: ChatCompletionChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
@@ -149,7 +165,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         system_fingerprint: 'fp_' + requestId,
         choices: [{
           index: 0,
-          delta: { content: '</think>' + (result.action === 'answer' ? (result as AnswerAction).answer : result.think) },
+          delta: { content: result.action === 'answer' ? (result as AnswerAction).answer : result.think },
           logprobs: null,
           finish_reason: 'stop'
         }]
