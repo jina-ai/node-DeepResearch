@@ -11,7 +11,10 @@ describe('/v1/chat/completions', () => {
     const emitter = EventEmitter.prototype;
     emitter.setMaxListeners(emitter.getMaxListeners() + 1);
   });
-  it('should require authentication', async () => {
+  it('should require authentication when secret is set', async () => {
+    // Set secret for test
+    process.argv.push('--secret=test-secret');
+    
     const response = await request(app)
       .post('/v1/chat/completions')
       .send({
@@ -19,6 +22,19 @@ describe('/v1/chat/completions', () => {
         messages: [{ role: 'user', content: 'test' }]
       });
     expect(response.status).toBe(401);
+    
+    // Clean up
+    process.argv.pop();
+  });
+
+  it('should allow requests without auth when no secret is set', async () => {
+    const response = await request(app)
+      .post('/v1/chat/completions')
+      .send({
+        model: 'test-model',
+        messages: [{ role: 'user', content: 'test' }]
+      });
+    expect(response.status).toBe(200);
   });
 
   it('should reject requests without user message', async () => {
