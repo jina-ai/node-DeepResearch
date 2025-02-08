@@ -1,5 +1,4 @@
-import request, { Response } from 'supertest';
-import { Server } from 'http';
+import request from 'supertest';
 import app from '../server';
 import { OPENAI_API_KEY } from '../config';
 
