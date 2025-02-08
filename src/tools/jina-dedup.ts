@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { TokenTracker } from "../utils/token-tracker";
 import {JINA_API_KEY} from "../config";
 
@@ -91,9 +91,9 @@ async function getEmbeddings(queries: string[]): Promise<{ embeddings: number[][
       embeddings,
       tokens: response.data.usage.total_tokens
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error getting embeddings from Jina:', error);
-    if (error?.response?.status === 402) {
+    if (error instanceof AxiosError && error.response?.status === 402) {
       return {
         embeddings: [],
         tokens: 0
