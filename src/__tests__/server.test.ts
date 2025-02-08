@@ -84,15 +84,12 @@ describe('/v1/chat/completions', () => {
     return new Promise<void>((resolve, reject) => {
       let isDone = false;
       let totalCompletionTokens = 0;
-      let timeoutHandle: NodeJS.Timeout;
-      
       const cleanup = () => {
-        if (timeoutHandle) clearTimeout(timeoutHandle);
         isDone = true;
         resolve();
       };
 
-      timeoutHandle = setTimeout(() => {
+      const timeoutHandle = setTimeout(() => {
         if (!isDone) {
           cleanup();
           reject(new Error('Test timed out'));
