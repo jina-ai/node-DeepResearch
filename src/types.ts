@@ -39,6 +39,12 @@ export interface TokenUsage {
   category?: TokenCategory;
 }
 
+export interface VercelTokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 export interface SearchResponse {
   code: number;
   status: number;
