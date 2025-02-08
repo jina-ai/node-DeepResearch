@@ -131,7 +131,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       context.tokenTracker.trackUsage('evaluator', completionTokens, 'accepted');
     } else {
       // Track rejected prediction tokens for non-answer responses
-      const rejectedTokens = Buffer.byteLength(result.think, 'utf-8');
+      const rejectedTokens = Math.ceil(result.think.split(/\s+/).length / 4);
       context.tokenTracker.trackUsage('evaluator', rejectedTokens, 'rejected');
     }
 
