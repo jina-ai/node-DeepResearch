@@ -2,7 +2,16 @@ import express, {Request, Response, RequestHandler} from 'express';
 import cors from 'cors';
 import {EventEmitter} from 'events';
 import {getResponse} from './agent';
-import {StepAction, StreamMessage, TrackerContext} from './types';
+import {
+  StepAction,
+  StreamMessage,
+  TrackerContext,
+  ChatCompletionRequest,
+  ChatCompletionResponse,
+  ChatCompletionChunk,
+  AnswerAction
+} from './types';
+import { OPENAI_API_KEY } from './config';
 import fs from 'fs/promises';
 import path from 'path';
 import {TokenTracker} from "./utils/token-tracker";
@@ -23,6 +32,124 @@ interface QueryRequest extends Request {
     maxBadAttempt?: number;
   };
 }
+
+// OpenAI-compatible chat completions endpoint
+app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ') || auth.split(' ')[1] !== OPENAI_API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const body = req.body as ChatCompletionRequest;
+  const lastMessage = body.messages[body.messages.length - 1];
+  if (lastMessage.role !== 'user') {
+    return res.status(400).json({ error: 'Last message must be from user' });
+  }
+
+  const requestId = Date.now().toString();
+  const context: TrackerContext = {
+    tokenTracker: new TokenTracker(),
+    actionTracker: new ActionTracker()
+  };
+
+  if (body.stream) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Send initial chunk
+    const initialChunk: ChatCompletionChunk = {
+      id: requestId,
+      object: 'chat.completion.chunk',
+      created: Math.floor(Date.now() / 1000),
+      model: body.model,
+      system_fingerprint: 'fp_' + requestId,
+      choices: [{
+        index: 0,
+        delta: { role: 'assistant' },
+        logprobs: null,
+        finish_reason: null
+      }]
+    };
+    res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
+
+    // Set up progress listener
+    context.actionTracker.on('action', (action) => {
+      const chunk: ChatCompletionChunk = {
+        id: requestId,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: body.model,
+        system_fingerprint: 'fp_' + requestId,
+        choices: [{
+          index: 0,
+          delta: { content: action.think },
+          logprobs: null,
+          finish_reason: null
+        }]
+      };
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+    });
+  }
+
+  try {
+    const { result } = await getResponse(lastMessage.content, undefined, undefined, context);
+
+    if (body.stream) {
+      // Send final chunk
+      const finalChunk: ChatCompletionChunk = {
+        id: requestId,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: body.model,
+        system_fingerprint: 'fp_' + requestId,
+        choices: [{
+          index: 0,
+          delta: {},
+          logprobs: null,
+          finish_reason: 'stop'
+        }]
+      };
+      res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
+      res.end();
+    } else {
+      const response: ChatCompletionResponse = {
+        id: requestId,
+        object: 'chat.completion',
+        created: Math.floor(Date.now() / 1000),
+        model: body.model,
+        system_fingerprint: 'fp_' + requestId,
+        choices: [{
+          index: 0,
+          message: {
+            role: 'assistant',
+            content: result.action === 'answer' ? (result as AnswerAction).answer : result.think
+          },
+          logprobs: null,
+          finish_reason: 'stop'
+        }],
+        usage: {
+          prompt_tokens: context.tokenTracker.getUsageBreakdown().prompt || 0,
+          completion_tokens: context.tokenTracker.getUsageBreakdown().completion || 0,
+          total_tokens: context.tokenTracker.getTotalUsage(),
+          completion_tokens_details: {
+            reasoning_tokens: context.tokenTracker.getUsageBreakdown().reasoning || 0,
+            accepted_prediction_tokens: context.tokenTracker.getUsageBreakdown().accepted || 0,
+            rejected_prediction_tokens: context.tokenTracker.getUsageBreakdown().rejected || 0
+          }
+        }
+      };
+      res.json(response);
+    }
+  } catch (error: any) {
+    res.status(500).json({
+      error: {
+        message: error?.message || 'An error occurred',
+        type: 'internal_server_error'
+      }
+    });
+  }
+}) as RequestHandler);
 
 interface StreamResponse extends Response {
   write: (chunk: string) => boolean;

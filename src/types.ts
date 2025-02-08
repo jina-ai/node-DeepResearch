@@ -144,6 +144,60 @@ export interface StreamMessage {
   };
 }
 
+// OpenAI API Types
+export interface ChatCompletionRequest {
+  model: string;
+  messages: Array<{
+    role: string;
+    content: string;
+  }>;
+  stream?: boolean;
+}
+
+export interface ChatCompletionResponse {
+  id: string;
+  object: 'chat.completion';
+  created: number;
+  model: string;
+  system_fingerprint: string;
+  choices: Array<{
+    index: number;
+    message: {
+      role: 'assistant';
+      content: string;
+    };
+    logprobs: null;
+    finish_reason: 'stop';
+  }>;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    completion_tokens_details: {
+      reasoning_tokens: number;
+      accepted_prediction_tokens: number;
+      rejected_prediction_tokens: number;
+    };
+  };
+}
+
+export interface ChatCompletionChunk {
+  id: string;
+  object: 'chat.completion.chunk';
+  created: number;
+  model: string;
+  system_fingerprint: string;
+  choices: Array<{
+    index: number;
+    delta: {
+      role?: 'assistant';
+      content?: string;
+    };
+    logprobs: null;
+    finish_reason: null | 'stop';
+  }>;
+}
+
 // Tracker Types
 import { TokenTracker } from './utils/token-tracker';
 import { ActionTracker } from './utils/action-tracker';
