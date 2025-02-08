@@ -41,6 +41,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   }
 
   const body = req.body as ChatCompletionRequest;
+  if (!body.messages?.length) {
+    return res.status(400).json({ error: 'Messages array is required and must not be empty' });
+  }
   const lastMessage = body.messages[body.messages.length - 1];
   if (lastMessage.role !== 'user') {
     return res.status(400).json({ error: 'Last message must be from user' });
