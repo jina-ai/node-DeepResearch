@@ -85,15 +85,13 @@ describe('/v1/chat/completions', () => {
       let isDone: boolean = false;
       let totalCompletionTokens: number = 0;
       const cleanup = () => {
-        if (!isDone) {
-          clearTimeout(timeoutHandle);
-          isDone = true;
-          resolve();
-        }
+        isDone = true;
+        resolve();
       };
 
       const timeoutHandle = setTimeout(() => {
         if (!isDone) {
+          clearTimeout(timeoutHandle);
           cleanup();
           reject(new Error('Test timed out'));
         }
