@@ -134,12 +134,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       const reasoningTokens = Math.ceil(result.think.split(/\s+/).length / 4);
       context.tokenTracker.trackUsage('evaluator', reasoningTokens, 'reasoning');
       
-      // Track completion tokens for the final answer
-      const completionTokens = Math.ceil(((result as AnswerAction).answer).split(/\s+/).length / 4);
-      context.tokenTracker.trackUsage('agent', completionTokens, 'completion');
-
       // Track accepted prediction tokens since this was a successful answer
-      context.tokenTracker.trackUsage('evaluator', completionTokens, 'accepted');
+      const answerTokens = Math.ceil(((result as AnswerAction).answer).split(/\s+/).length / 4);
+      context.tokenTracker.trackUsage('evaluator', answerTokens, 'accepted');
     } else {
       // Track rejected prediction tokens for non-answer responses
       const rejectedTokens = Math.ceil(result.think.split(/\s+/).length / 4);
