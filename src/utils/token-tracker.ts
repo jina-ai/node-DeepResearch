@@ -64,6 +64,25 @@ export class TokenTracker extends EventEmitter {
     };
   }
 
+  getVercelUsage(): {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  } {
+    const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
+      if (category) {
+        acc[category] = (acc[category] || 0) + tokens;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      promptTokens: categoryBreakdown.prompt || 0,
+      completionTokens: categoryBreakdown.completion || 0,
+      totalTokens: categoryBreakdown.prompt + categoryBreakdown.completion
+    };
+  }
+
   printSummary() {
     const breakdown = this.getUsageBreakdown();
     console.log('Token Usage Summary:', {
