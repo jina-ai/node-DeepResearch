@@ -1,5 +1,5 @@
-import request from 'supertest';
-import { Response } from 'supertest';
+import request, { Response } from 'supertest';
+import { Server } from 'http';
 import app from '../server';
 import { OPENAI_API_KEY } from '../config';
 
@@ -68,13 +68,18 @@ describe('/v1/chat/completions', () => {
           stream: true
         })
         .buffer(true)
-        .parse((res: Response, callback: (err: Error | null, data: string) => void) => {
-          let data = '';
-          res.on('data', (chunk: Buffer) => {
-            data += chunk.toString();
+        .parse((res, callback) => {
+          const response = res as unknown as {
+            on(event: 'data' | 'end', listener: (chunk?: Buffer) => void): void;
+          };
+          let responseData = '';
+          response.on('data', (chunk?: Buffer) => {
+            if (chunk) {
+              responseData += chunk.toString();
+            }
           });
-          res.on('end', () => {
-            callback(null, data);
+          response.on('end', () => {
+            callback(null, responseData);
           });
         })
         .end((err, res) => {
@@ -84,10 +89,11 @@ describe('/v1/chat/completions', () => {
           expect(res.headers['content-type']).toBe('text/event-stream');
           
           // Verify stream format and content
-          const chunks = (res.body as string)
+          const responseText = res.body as string;
+          const chunks = responseText
             .split('\n\n')
-            .filter((chunk: string) => chunk.startsWith('data: '))
-            .map((chunk: string) => JSON.parse(chunk.replace('data: ', '')));
+            .filter((line: string) => line.startsWith('data: '))
+            .map((line: string) => JSON.parse(line.replace('data: ', '')));
           
           expect(chunks.length).toBeGreaterThan(0);
           expect(chunks[0]).toMatchObject({
