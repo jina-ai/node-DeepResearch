@@ -467,8 +467,16 @@ app.get('/api/v1/task/:requestId', (async (req: Request, res: Response) => {
   }
 }) as RequestHandler);
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+// Export server startup function for better testing
+export function startServer() {
+  return app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+}
+
+// Start server if running directly
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
 export default app;
