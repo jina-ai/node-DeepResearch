@@ -1,8 +1,8 @@
 import request from 'supertest';
-import app from '../server';
 import { EventEmitter } from 'events';
 
 const TEST_SECRET = 'test-secret';
+let app: any; // Make app mutable for test reloading
 
 describe('/v1/chat/completions', () => {
   jest.setTimeout(120000); // Increase timeout for all tests in this suite
@@ -13,8 +13,16 @@ describe('/v1/chat/completions', () => {
     if (existingSecretIndex !== -1) {
       process.argv.splice(existingSecretIndex, 1);
     }
+    
+    // Clear require cache for server module
+    jest.resetModules();
+    delete require.cache[require.resolve('../server')];
+    
     // Set up test secret for authenticated requests
     process.argv.push(`--secret=${TEST_SECRET}`);
+    
+    // Re-import server with new secret
+    app = require('../server').default;
   });
   
   afterEach(() => {
