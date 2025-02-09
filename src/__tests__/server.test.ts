@@ -108,6 +108,24 @@ describe('/v1/chat/completions', () => {
   });
 
   it('should track tokens correctly in non-streaming response', async () => {
+    // Create a promise that resolves when token tracking is complete
+    const tokenTrackingPromise = new Promise<void>((resolve) => {
+      const emitter = EventEmitter.prototype;
+      const originalEmit = emitter.emit;
+      
+      // Override emit to detect when token tracking is done
+      emitter.emit = function(event: string, ...args: any[]) {
+        if (event === 'usage') {
+          // Wait for next tick to ensure all token tracking is complete
+          process.nextTick(() => {
+            emitter.emit = originalEmit;
+            resolve();
+          });
+        }
+        return originalEmit.apply(this, [event, ...args]);
+      };
+    });
+
     const response = await request(app)
       .post('/v1/chat/completions')
       .set('Authorization', `Bearer ${TEST_SECRET}`)
@@ -116,6 +134,9 @@ describe('/v1/chat/completions', () => {
         messages: [{ role: 'user', content: 'test' }]
       });
     
+    // Wait for token tracking to complete
+    await tokenTrackingPromise;
+
     expect(response.body.usage).toMatchObject({
       prompt_tokens: expect.any(Number),
       completion_tokens: expect.any(Number),
@@ -139,17 +160,18 @@ describe('/v1/chat/completions', () => {
     return new Promise<void>((resolve, reject) => {
       let isDone: boolean = false;
       let totalCompletionTokens: number = 0;
-      let timeoutHandle: NodeJS.Timeout;
+      const timeoutHandle: NodeJS.Timeout = setTimeout(() => {
+        if (!isDone) {
+          cleanup();
+          reject(new Error('Test timed out'));
+        }
+      }, 30000);
 
       const cleanup = () => {
-        if (timeoutHandle) clearTimeout(timeoutHandle);
+        clearTimeout(timeoutHandle);
         isDone = true;
         resolve();
       };
-
-      // Set timeout for test
-      timeoutHandle = setTimeout(() => {
-        if (!isDone) {
           cleanup();
           reject(new Error('Test timed out'));
         }
