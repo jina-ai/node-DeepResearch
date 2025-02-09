@@ -9,6 +9,9 @@ describe('/v1/chat/completions', () => {
   jest.setTimeout(120000); // Increase timeout for all tests in this suite
   
   beforeEach(async () => {
+    // Set NODE_ENV to test to prevent server from auto-starting
+    process.env.NODE_ENV = 'test';
+    
     // Clean up any existing secret
     const existingSecretIndex = process.argv.findIndex(arg => arg.startsWith('--secret='));
     if (existingSecretIndex !== -1) {
