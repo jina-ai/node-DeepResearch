@@ -63,6 +63,9 @@ describe('/v1/chat/completions', () => {
       process.argv.splice(secretIndex, 1);
     }
     
+    // Reset module cache to ensure clean state
+    jest.resetModules();
+    
     // Reload server module without secret
     const { default: serverModule } = await import('../server');
     app = serverModule;
