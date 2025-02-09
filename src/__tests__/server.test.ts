@@ -15,11 +15,8 @@ describe('/v1/chat/completions', () => {
       process.argv.splice(existingSecretIndex, 1);
     }
     
-    // Clear require cache for server module
+    // Clear module cache and set up test secret
     jest.resetModules();
-    delete require.cache[require.resolve('../server')];
-    
-    // Set up test secret for authenticated requests
     process.argv.push(`--secret=${TEST_SECRET}`);
     
     // Re-import server with new secret
