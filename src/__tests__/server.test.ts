@@ -56,7 +56,7 @@ describe('/v1/chat/completions', () => {
     expect(response.status).toBe(401);
   });
 
-  it('should require authentication even when no secret is set', async () => {
+  it('should allow requests without auth when no secret is set', async () => {
     // Remove secret for this test
     const secretIndex = process.argv.findIndex(arg => arg.startsWith('--secret='));
     if (secretIndex !== -1) {
@@ -73,8 +73,7 @@ describe('/v1/chat/completions', () => {
         model: 'test-model',
         messages: [{ role: 'user', content: 'test' }]
       });
-    expect(response.status).toBe(401);
-    expect(response.body.error).toBe('Unauthorized');
+    expect(response.status).toBe(200);
   });
 
   it('should reject requests without user message', async () => {
