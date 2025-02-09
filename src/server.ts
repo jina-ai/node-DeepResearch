@@ -193,7 +193,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       res.write(`data: ${JSON.stringify(answerChunk)}\n\n`);
       res.end();
     } else {
-      const usage = context.tokenTracker.getOpenAIUsage();
+      const usage = context.tokenTracker.getUsageDetails();
       const response: ChatCompletionResponse = {
         id: requestId,
         object: 'chat.completion',
@@ -240,7 +240,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     // Clean up event listeners
     context.actionTracker.removeAllListeners('action');
 
-    const usage = context.tokenTracker.getOpenAIUsage();
+    const usage = context.tokenTracker.getUsageDetails();
 
     if (body.stream && res.headersSent) {
       // For streaming responses that have already started, send error as a chunk

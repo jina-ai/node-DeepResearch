@@ -35,10 +35,15 @@ export class TokenTracker extends EventEmitter {
     }, {} as Record<string, number>);
   }
 
-  getVercelUsage(): {
+  getUsageDetails(): {
     promptTokens: number;
     completionTokens: number;
     totalTokens: number;
+    completionTokensDetails?: {
+      reasoningTokens: number;
+      acceptedPredictionTokens: number;
+      rejectedPredictionTokens: number;
+    };
   } {
     const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
       if (category) {
@@ -56,36 +61,11 @@ export class TokenTracker extends EventEmitter {
     return {
       promptTokens,
       completionTokens,
-      totalTokens: promptTokens + completionTokens
-    };
-  }
-
-  getOpenAIUsage(): {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-    completion_tokens_details: {
-      reasoning_tokens: number;
-      accepted_prediction_tokens: number;
-      rejected_prediction_tokens: number;
-    };
-  } {
-    const vercelUsage = this.getVercelUsage();
-    const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
-      if (category) {
-        acc[category] = (acc[category] || 0) + tokens;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    return {
-      prompt_tokens: vercelUsage.promptTokens,
-      completion_tokens: vercelUsage.completionTokens,
-      total_tokens: vercelUsage.totalTokens,
-      completion_tokens_details: {
-        reasoning_tokens: categoryBreakdown.reasoning || 0,
-        accepted_prediction_tokens: categoryBreakdown.accepted || 0,
-        rejected_prediction_tokens: categoryBreakdown.rejected || 0
+      totalTokens: promptTokens + completionTokens,
+      completionTokensDetails: {
+        reasoningTokens: categoryBreakdown.reasoning || 0,
+        acceptedPredictionTokens: categoryBreakdown.accepted || 0,
+        rejectedPredictionTokens: categoryBreakdown.rejected || 0
       }
     };
   }
