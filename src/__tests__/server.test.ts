@@ -26,9 +26,10 @@ describe('/v1/chat/completions', () => {
     app = serverModule;
   });
   
-  afterEach(() => {
+  afterEach(async () => {
     // Clean up any remaining event listeners
     const emitter = EventEmitter.prototype;
+    emitter.removeAllListeners();
     emitter.setMaxListeners(emitter.getMaxListeners() + 1);
     
     // Clean up test secret
@@ -36,6 +37,12 @@ describe('/v1/chat/completions', () => {
     if (secretIndex !== -1) {
       process.argv.splice(secretIndex, 1);
     }
+
+    // Wait for any pending promises to settle
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Reset module cache to ensure clean state
+    jest.resetModules();
   });
   it('should require authentication when secret is set', async () => {
     // Note: secret is already set in beforeEach
@@ -132,14 +139,17 @@ describe('/v1/chat/completions', () => {
     return new Promise<void>((resolve, reject) => {
       let isDone: boolean = false;
       let totalCompletionTokens: number = 0;
+      let timeoutHandle: NodeJS.Timeout;
+
       const cleanup = () => {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
         isDone = true;
         resolve();
       };
 
-      const timeoutHandle = setTimeout(() => {
+      // Set timeout for test
+      timeoutHandle = setTimeout(() => {
         if (!isDone) {
-          clearTimeout(timeoutHandle);
           cleanup();
           reject(new Error('Test timed out'));
         }
@@ -157,16 +167,28 @@ describe('/v1/chat/completions', () => {
         .buffer(true)
         .parse((res, callback) => {
           const response = res as unknown as {
-            on(event: 'data' | 'end', listener: (chunk?: Buffer) => void): void;
+            on(event: 'data' | 'end' | 'error', listener: (chunk?: Buffer | Error) => void): void;
           };
           let responseData = '';
+          
+          response.on('error', (err: Error) => {
+            cleanup();
+            callback(err);
+          });
+
           response.on('data', (chunk?: Buffer) => {
             if (chunk) {
               responseData += chunk.toString();
             }
           });
+
           response.on('end', () => {
-            callback(null, responseData);
+            try {
+              callback(null, responseData);
+            } catch (err) {
+              cleanup();
+              callback(err as Error);
+            }
           });
         })
         .end((err, res) => {
