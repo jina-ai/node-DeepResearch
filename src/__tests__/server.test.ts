@@ -15,13 +15,12 @@ describe('/v1/chat/completions', () => {
       process.argv.splice(existingSecretIndex, 1);
     }
     
-    // Clear module cache and set up test secret
-    jest.resetModules();
+    // Set up test secret and import server module
     process.argv.push(`--secret=${TEST_SECRET}`);
     
-    // Re-import server with new secret
-    const module = await import('../server');
-    app = module.default;
+    // Import server module (jest.resetModules() is called automatically before each test)
+    const { default: serverModule } = await import('../server');
+    app = serverModule;
   });
   
   afterEach(() => {
