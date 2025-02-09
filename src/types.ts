@@ -31,18 +31,14 @@ export type VisitAction = BaseAction & {
 export type StepAction = SearchAction | AnswerAction | ReflectAction | VisitAction;
 
 // Response Types
+import { CompletionTokenUsage } from 'ai';
+
 export type TokenCategory = 'prompt' | 'completion' | 'reasoning' | 'accepted' | 'rejected';
 
-export interface TokenUsage {
+export interface TokenUsage extends CompletionTokenUsage {
   tool: string;
   tokens: number;
   category?: TokenCategory;
-}
-
-export interface VercelTokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
 }
 
 export interface SearchResponse {
