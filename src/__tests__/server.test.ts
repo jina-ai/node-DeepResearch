@@ -1,19 +1,30 @@
 import request from 'supertest';
 import app from '../server';
-import { OPENAI_API_KEY } from '../config';
 import { EventEmitter } from 'events';
+
+const TEST_SECRET = 'test-secret';
 
 describe('/v1/chat/completions', () => {
   jest.setTimeout(120000); // Increase timeout for all tests in this suite
+  
+  beforeEach(() => {
+    // Set up test secret for authenticated requests
+    process.argv.push(`--secret=${TEST_SECRET}`);
+  });
   
   afterEach(() => {
     // Clean up any remaining event listeners
     const emitter = EventEmitter.prototype;
     emitter.setMaxListeners(emitter.getMaxListeners() + 1);
+    
+    // Clean up test secret
+    const secretIndex = process.argv.findIndex(arg => arg.startsWith('--secret='));
+    if (secretIndex !== -1) {
+      process.argv.splice(secretIndex, 1);
+    }
   });
   it('should require authentication when secret is set', async () => {
-    // Set secret for test
-    process.argv.push('--secret=test-secret');
+    // Note: secret is already set in beforeEach
     
     const response = await request(app)
       .post('/v1/chat/completions')
@@ -22,12 +33,14 @@ describe('/v1/chat/completions', () => {
         messages: [{ role: 'user', content: 'test' }]
       });
     expect(response.status).toBe(401);
-    
-    // Clean up
-    process.argv.pop();
   });
 
   it('should allow requests without auth when no secret is set', async () => {
+    // Remove secret for this test
+    const secretIndex = process.argv.findIndex(arg => arg.startsWith('--secret='));
+    if (secretIndex !== -1) {
+      process.argv.splice(secretIndex, 1);
+    }
     const response = await request(app)
       .post('/v1/chat/completions')
       .send({
@@ -40,7 +53,7 @@ describe('/v1/chat/completions', () => {
   it('should reject requests without user message', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
-      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .set('Authorization', `Bearer ${TEST_SECRET}`)
       .send({
         model: 'test-model',
         messages: [{ role: 'developer', content: 'test' }]
@@ -52,7 +65,7 @@ describe('/v1/chat/completions', () => {
   it('should handle non-streaming request', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
-      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .set('Authorization', `Bearer ${TEST_SECRET}`)
       .send({
         model: 'test-model',
         messages: [{ role: 'user', content: 'test' }]
@@ -71,7 +84,7 @@ describe('/v1/chat/completions', () => {
   it('should track tokens correctly in non-streaming response', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
-      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .set('Authorization', `Bearer ${TEST_SECRET}`)
       .send({
         model: 'test-model',
         messages: [{ role: 'user', content: 'test' }]
@@ -209,7 +222,7 @@ describe('/v1/chat/completions', () => {
   it('should track tokens correctly in error response', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
-      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .set('Authorization', `Bearer ${TEST_SECRET}`)
       .send({
         model: 'test-model',
         messages: [] // Invalid messages array
@@ -222,7 +235,7 @@ describe('/v1/chat/completions', () => {
     // Make another request to verify token tracking after error
     const validResponse = await request(app)
       .post('/v1/chat/completions')
-      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .set('Authorization', `Bearer ${TEST_SECRET}`)
       .send({
         model: 'test-model',
         messages: [{ role: 'user', content: 'test' }]
@@ -244,7 +257,7 @@ describe('/v1/chat/completions', () => {
   it('should provide token usage in OpenAI and Vercel AI SDK formats', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
-      .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+      .set('Authorization', `Bearer ${TEST_SECRET}`)
       .send({
         model: 'test-model',
         messages: [{ role: 'user', content: 'test' }]
