@@ -167,19 +167,19 @@ describe('/v1/chat/completions', () => {
         .buffer(true)
         .parse((res, callback) => {
           const response = res as unknown as {
-            on(event: 'data' | 'end' | 'error', listener: (chunk?: Buffer | Error) => void): void;
+            on(event: 'data', listener: (chunk: Buffer) => void): void;
+            on(event: 'end', listener: () => void): void;
+            on(event: 'error', listener: (err: Error) => void): void;
           };
           let responseData = '';
           
-          response.on('error', (err: Error) => {
+          response.on('error', (err) => {
             cleanup();
-            callback(err);
+            callback(err, null);
           });
 
-          response.on('data', (chunk?: Buffer) => {
-            if (chunk) {
-              responseData += chunk.toString();
-            }
+          response.on('data', (chunk) => {
+            responseData += chunk.toString();
           });
 
           response.on('end', () => {
@@ -187,7 +187,7 @@ describe('/v1/chat/completions', () => {
               callback(null, responseData);
             } catch (err) {
               cleanup();
-              callback(err as Error);
+              callback(err instanceof Error ? err : new Error(String(err)), null);
             }
           });
         })
