@@ -158,25 +158,21 @@ describe('/v1/chat/completions', () => {
 
   it('should handle streaming request and track tokens correctly', async () => {
     return new Promise<void>((resolve, reject) => {
-      let isDone: boolean = false;
-      let totalCompletionTokens: number = 0;
-      const timeoutHandle: NodeJS.Timeout = setTimeout(() => {
-        if (!isDone) {
-          cleanup();
-          reject(new Error('Test timed out'));
-        }
-      }, 30000);
+      let isDone = false;
+      let totalCompletionTokens = 0;
 
       const cleanup = () => {
         clearTimeout(timeoutHandle);
         isDone = true;
         resolve();
       };
+
+      const timeoutHandle = setTimeout(() => {
+        if (!isDone) {
           cleanup();
           reject(new Error('Test timed out'));
         }
       }, 30000);
-
 
       request(app)
         .post('/v1/chat/completions')
