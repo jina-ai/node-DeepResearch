@@ -53,7 +53,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     model: req.body.model,
     stream: req.body.stream,
     messageCount: req.body.messages?.length,
-    hasAuth: !!authHeader,
+    hasAuth: !!req.headers.authorization,
     requestId: Date.now().toString()
   });
 
