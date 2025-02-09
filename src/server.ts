@@ -40,12 +40,10 @@ interface QueryRequest extends Request {
 app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   // Check authentication if secret is set
   const authHeader = req.headers.authorization;
-  if (secret) {
-    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== secret) {
-      console.log('[chat/completions] Unauthorized request');
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+  if (secret && (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== secret)) {
+    console.log('[chat/completions] Unauthorized request');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
   }
 
   // Log request details (excluding sensitive data)
