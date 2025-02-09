@@ -36,13 +36,13 @@ export class TokenTracker extends EventEmitter {
   }
 
   getUsageDetails(): {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    completionTokensDetails?: {
-      reasoningTokens: number;
-      acceptedPredictionTokens: number;
-      rejectedPredictionTokens: number;
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    completion_tokens_details?: {
+      reasoning_tokens: number;
+      accepted_prediction_tokens: number;
+      rejected_prediction_tokens: number;
     };
   } {
     const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
@@ -52,20 +52,20 @@ export class TokenTracker extends EventEmitter {
       return acc;
     }, {} as Record<string, number>);
 
-    const promptTokens = categoryBreakdown.prompt || 0;
-    const completionTokens = 
+    const prompt_tokens = categoryBreakdown.prompt || 0;
+    const completion_tokens = 
       (categoryBreakdown.reasoning || 0) + 
       (categoryBreakdown.accepted || 0) + 
       (categoryBreakdown.rejected || 0);
 
     return {
-      promptTokens,
-      completionTokens,
-      totalTokens: promptTokens + completionTokens,
-      completionTokensDetails: {
-        reasoningTokens: categoryBreakdown.reasoning || 0,
-        acceptedPredictionTokens: categoryBreakdown.accepted || 0,
-        rejectedPredictionTokens: categoryBreakdown.rejected || 0
+      prompt_tokens,
+      completion_tokens,
+      total_tokens: prompt_tokens + completion_tokens,
+      completion_tokens_details: {
+        reasoning_tokens: categoryBreakdown.reasoning || 0,
+        accepted_prediction_tokens: categoryBreakdown.accepted || 0,
+        rejected_prediction_tokens: categoryBreakdown.rejected || 0
       }
     };
   }

@@ -9,7 +9,8 @@ import {
   ChatCompletionRequest,
   ChatCompletionResponse,
   ChatCompletionChunk,
-  AnswerAction
+  AnswerAction,
+  TOKEN_CATEGORIES
 } from './types';
 import fs from 'fs/promises';
 import path from 'path';
@@ -46,12 +47,13 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     requestId: Date.now().toString()
   });
 
-  // Only check auth if secret is provided
+  // Check authentication if secret is set
   if (secret) {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ') || auth.split(' ')[1] !== secret) {
       console.log('[chat/completions] Unauthorized request');
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
   }
 
@@ -73,7 +75,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   // Track prompt tokens for the initial message
   // Use Vercel's token counting convention - 1 token per message
   const messageTokens = body.messages.length;
-  context.tokenTracker.trackUsage('agent', messageTokens, 'prompt');
+  context.tokenTracker.trackUsage('agent', messageTokens, TOKEN_CATEGORIES.PROMPT);
 
   if (body.stream) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -100,27 +102,31 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     const actionListener = (action: any) => {
       // Track reasoning tokens for each chunk using Vercel's convention
       const chunkTokens = 1; // Default to 1 token per chunk
-      context.tokenTracker.trackUsage('evaluator', chunkTokens, 'reasoning');
-      const chunk: ChatCompletionChunk = {
-        id: requestId,
-        object: 'chat.completion.chunk',
-        created: Math.floor(Date.now() / 1000),
-        model: body.model,
-        system_fingerprint: 'fp_' + requestId,
-        choices: [{
-          index: 0,
-          delta: { content: action.think },
-          logprobs: null,
-          finish_reason: null
-        }]
-      };
-      const chunkStr = `data: ${JSON.stringify(chunk)}\n\n`;
-      console.log('[chat/completions] Sending chunk:', {
-        id: chunk.id,
-        content: chunk.choices[0].delta.content,
-        finish_reason: chunk.choices[0].finish_reason
-      });
-      res.write(chunkStr);
+      context.tokenTracker.trackUsage('evaluator', chunkTokens, TOKEN_CATEGORIES.REASONING);
+      
+      // Only send chunk if there's content to send
+      if (action.think) {
+        const chunk: ChatCompletionChunk = {
+          id: requestId,
+          object: 'chat.completion.chunk',
+          created: Math.floor(Date.now() / 1000),
+          model: body.model,
+          system_fingerprint: 'fp_' + requestId,
+          choices: [{
+            index: 0,
+            delta: { content: `<think>${action.think}</think>` },
+            logprobs: null,
+            finish_reason: null
+          }]
+        };
+        const chunkStr = `data: ${JSON.stringify(chunk)}\n\n`;
+        console.log('[chat/completions] Sending chunk:', {
+          id: chunk.id,
+          content: chunk.choices[0].delta.content,
+          finish_reason: chunk.choices[0].finish_reason
+        });
+        res.write(chunkStr);
+      }
     };
     context.actionTracker.on('action', actionListener);
     
@@ -152,11 +158,11 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     if (result.action === 'answer') {
       // Track accepted prediction tokens for the final answer using Vercel's convention
       const answerTokens = 1; // Default to 1 token per answer
-      context.tokenTracker.trackUsage('evaluator', answerTokens, 'accepted');
+      context.tokenTracker.trackUsage('evaluator', answerTokens, TOKEN_CATEGORIES.ACCEPTED);
     } else {
       // Track rejected prediction tokens for non-answer responses
       const rejectedTokens = 1; // Default to 1 token per rejected response
-      context.tokenTracker.trackUsage('evaluator', rejectedTokens, 'rejected');
+      context.tokenTracker.trackUsage('evaluator', rejectedTokens, TOKEN_CATEGORIES.REJECTED);
     }
 
     if (body.stream) {
@@ -235,11 +241,12 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     const errorMessage = error?.message || 'An error occurred';
     // Default to 1 token for errors as per Vercel AI SDK convention
     const errorTokens = 1;
-    context.tokenTracker.trackUsage('evaluator', errorTokens, 'rejected');
+    context.tokenTracker.trackUsage('evaluator', errorTokens, TOKEN_CATEGORIES.REJECTED);
 
     // Clean up event listeners
     context.actionTracker.removeAllListeners('action');
 
+    // Get token usage in OpenAI API format
     const usage = context.tokenTracker.getUsageDetails();
 
     if (body.stream && res.headersSent) {
@@ -260,7 +267,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       };
       res.write(`data: ${JSON.stringify(closeThinkChunk)}\n\n`);
 
-      // Then send the error message
+      // Track error token and send error message
+      context.tokenTracker.trackUsage('evaluator', 1, 'rejected');
       const errorChunk: ChatCompletionChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
@@ -269,7 +277,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         system_fingerprint: 'fp_' + requestId,
         choices: [{
           index: 0,
-          delta: { content: `Error: ${errorMessage}` },
+          delta: { content: errorMessage },
           logprobs: null,
           finish_reason: 'stop'
         }]

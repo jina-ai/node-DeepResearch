@@ -31,16 +31,24 @@ export type VisitAction = BaseAction & {
 export type StepAction = SearchAction | AnswerAction | ReflectAction | VisitAction;
 
 // Response Types
-export type TokenCategory = 'prompt' | 'completion' | 'reasoning' | 'accepted' | 'rejected';
+export const TOKEN_CATEGORIES = {
+  PROMPT: 'prompt',
+  REASONING: 'reasoning',
+  ACCEPTED: 'accepted',
+  REJECTED: 'rejected'
+} as const;
+
+export type TokenCategory = typeof TOKEN_CATEGORIES[keyof typeof TOKEN_CATEGORIES];
 
 // Following Vercel AI SDK's token counting interface
 export interface TokenUsage {
   tool: string;
   tokens: number;
   category?: TokenCategory;
-  promptTokens?: number;
-  completionTokens?: number;
-  totalTokens?: number;
+  // Following Vercel AI SDK's token counting interface
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
 }
 
 export interface SearchResponse {
@@ -177,13 +185,13 @@ export interface ChatCompletionResponse {
     finish_reason: 'stop';
   }>;
   usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-    completionTokensDetails?: {
-      reasoningTokens: number;
-      acceptedPredictionTokens: number;
-      rejectedPredictionTokens: number;
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    completion_tokens_details?: {
+      reasoning_tokens: number;
+      accepted_prediction_tokens: number;
+      rejected_prediction_tokens: number;
     };
   };
 }
