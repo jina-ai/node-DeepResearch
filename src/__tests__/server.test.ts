@@ -55,6 +55,11 @@ describe('/v1/chat/completions', () => {
     if (secretIndex !== -1) {
       process.argv.splice(secretIndex, 1);
     }
+    
+    // Reload server module without secret
+    const { default: serverModule } = await import('../server');
+    app = serverModule;
+    
     const response = await request(app)
       .post('/v1/chat/completions')
       .send({
