@@ -8,6 +8,11 @@ describe('/v1/chat/completions', () => {
   jest.setTimeout(120000); // Increase timeout for all tests in this suite
   
   beforeEach(() => {
+    // Clean up any existing secret
+    const existingSecretIndex = process.argv.findIndex(arg => arg.startsWith('--secret='));
+    if (existingSecretIndex !== -1) {
+      process.argv.splice(existingSecretIndex, 1);
+    }
     // Set up test secret for authenticated requests
     process.argv.push(`--secret=${TEST_SECRET}`);
   });
