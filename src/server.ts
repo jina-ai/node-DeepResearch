@@ -268,7 +268,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       res.write(`data: ${JSON.stringify(closeThinkChunk)}\n\n`);
 
       // Track error token and send error message
-      context.tokenTracker.trackUsage('evaluator', 1, 'rejected');
+      context.tokenTracker.trackUsage('evaluator', 1, TOKEN_CATEGORIES.REJECTED);
       const errorChunk: ChatCompletionChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
