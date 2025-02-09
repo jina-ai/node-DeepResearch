@@ -71,9 +71,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   };
 
   // Track prompt tokens for the initial message
-  const messageTokens = body.messages.reduce((total, msg) => {
-    return total + Math.ceil(msg.content.split(/\s+/).length / 4);
-  }, 0);
+  // Use Vercel's token counting convention - 1 token per message
+  const messageTokens = body.messages.length;
   context.tokenTracker.trackUsage('agent', messageTokens, 'prompt');
 
   if (body.stream) {
@@ -99,8 +98,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
 
     // Set up progress listener with cleanup
     const actionListener = (action: any) => {
-      // Track reasoning tokens for each chunk
-      const chunkTokens = Math.ceil(action.think.split(/\s+/).length / 4);
+      // Track reasoning tokens for each chunk using Vercel's convention
+      const chunkTokens = 1; // Default to 1 token per chunk
       context.tokenTracker.trackUsage('evaluator', chunkTokens, 'reasoning');
       const chunk: ChatCompletionChunk = {
         id: requestId,
@@ -151,12 +150,12 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     
     // Track tokens based on action type
     if (result.action === 'answer') {
-      // Track accepted prediction tokens for the final answer
-      const answerTokens = Math.ceil(((result as AnswerAction).answer).split(/\s+/).length / 4);
+      // Track accepted prediction tokens for the final answer using Vercel's convention
+      const answerTokens = 1; // Default to 1 token per answer
       context.tokenTracker.trackUsage('evaluator', answerTokens, 'accepted');
     } else {
       // Track rejected prediction tokens for non-answer responses
-      const rejectedTokens = Math.ceil(result.think.split(/\s+/).length / 4);
+      const rejectedTokens = 1; // Default to 1 token per rejected response
       context.tokenTracker.trackUsage('evaluator', rejectedTokens, 'rejected');
     }
 
@@ -232,11 +231,10 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       requestId
     });
 
-    // Track error as rejected tokens with safe token counting
+    // Track error as rejected tokens with Vercel token counting
     const errorMessage = error?.message || 'An error occurred';
-    // Ensure safe token counting for error messages
-    const errorTokens = typeof errorMessage === 'string' ? 
-      Math.ceil(errorMessage.split(/\s+/).length / 4) : 1;
+    // Default to 1 token for errors as per Vercel AI SDK convention
+    const errorTokens = 1;
     context.tokenTracker.trackUsage('evaluator', errorTokens, 'rejected');
 
     // Clean up event listeners
