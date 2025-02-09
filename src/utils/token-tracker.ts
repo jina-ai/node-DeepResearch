@@ -45,6 +45,7 @@ export class TokenTracker extends EventEmitter {
       rejected_prediction_tokens: number;
     };
   } {
+    const vercelUsage = this.getVercelUsage();
     const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
       if (category) {
         acc[category] = (acc[category] || 0) + tokens;
@@ -52,26 +53,40 @@ export class TokenTracker extends EventEmitter {
       return acc;
     }, {} as Record<string, number>);
 
-    const details = {
-      reasoning_tokens: categoryBreakdown.reasoning || 0,
-      accepted_prediction_tokens: categoryBreakdown.accepted || 0,
-      rejected_prediction_tokens: categoryBreakdown.rejected || 0
+    return {
+      prompt_tokens: vercelUsage.promptTokens,
+      completion_tokens: vercelUsage.completionTokens,
+      total_tokens: vercelUsage.totalTokens,
+      completion_tokens_details: {
+        reasoning_tokens: categoryBreakdown.reasoning || 0,
+        accepted_prediction_tokens: categoryBreakdown.accepted || 0,
+        rejected_prediction_tokens: categoryBreakdown.rejected || 0
+      }
     };
+  }
 
-    // Only use the detailed token counts for completion tokens
-    const completion_tokens = 
-      details.reasoning_tokens + 
-      details.accepted_prediction_tokens + 
-      details.rejected_prediction_tokens;
+  getVercelUsage(): {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  } {
+    const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
+      if (category) {
+        acc[category] = (acc[category] || 0) + tokens;
+      }
+      return acc;
+    }, {} as Record<string, number>);
 
-    const prompt_tokens = categoryBreakdown.prompt || 0;
-    const total_tokens = prompt_tokens + completion_tokens;
+    const promptTokens = categoryBreakdown.prompt || 0;
+    const completionTokens = 
+      (categoryBreakdown.reasoning || 0) + 
+      (categoryBreakdown.accepted || 0) + 
+      (categoryBreakdown.rejected || 0);
 
     return {
-      prompt_tokens,
-      completion_tokens,
-      total_tokens,
-      completion_tokens_details: details
+      promptTokens,
+      completionTokens,
+      totalTokens: promptTokens + completionTokens
     };
   }
 
