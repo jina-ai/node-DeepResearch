@@ -91,16 +91,21 @@ describe('/v1/chat/completions', () => {
       });
     
     expect(response.body.usage).toMatchObject({
-      promptTokens: expect.any(Number),
-      completionTokens: expect.any(Number),
-      totalTokens: expect.any(Number)
+      prompt_tokens: expect.any(Number),
+      completion_tokens: expect.any(Number),
+      total_tokens: expect.any(Number),
+      completion_tokens_details: {
+        reasoning_tokens: expect.any(Number),
+        accepted_prediction_tokens: expect.any(Number),
+        rejected_prediction_tokens: expect.any(Number)
+      }
     });
 
     // Verify token counts are reasonable
-    expect(response.body.usage.promptTokens).toBeGreaterThan(0);
-    expect(response.body.usage.completionTokens).toBeGreaterThan(0);
-    expect(response.body.usage.totalTokens).toBe(
-      response.body.usage.promptTokens + response.body.usage.completionTokens
+    expect(response.body.usage.prompt_tokens).toBeGreaterThan(0);
+    expect(response.body.usage.completion_tokens).toBeGreaterThan(0);
+    expect(response.body.usage.total_tokens).toBe(
+      response.body.usage.prompt_tokens + response.body.usage.completion_tokens
     );
   });
 
@@ -238,16 +243,21 @@ describe('/v1/chat/completions', () => {
     
     // Verify token tracking still works after error
     expect(validResponse.body.usage).toMatchObject({
-      promptTokens: expect.any(Number),
-      completionTokens: expect.any(Number),
-      totalTokens: expect.any(Number)
+      prompt_tokens: expect.any(Number),
+      completion_tokens: expect.any(Number),
+      total_tokens: expect.any(Number),
+      completion_tokens_details: {
+        reasoning_tokens: expect.any(Number),
+        accepted_prediction_tokens: expect.any(Number),
+        rejected_prediction_tokens: expect.any(Number)
+      }
     });
 
     // Verify token counts are reasonable
-    expect(validResponse.body.usage.promptTokens).toBeGreaterThan(0);
-    expect(validResponse.body.usage.completionTokens).toBeGreaterThan(0);
-    expect(validResponse.body.usage.totalTokens).toBe(
-      validResponse.body.usage.promptTokens + validResponse.body.usage.completionTokens
+    expect(validResponse.body.usage.prompt_tokens).toBeGreaterThan(0);
+    expect(validResponse.body.usage.completion_tokens).toBeGreaterThan(0);
+    expect(validResponse.body.usage.total_tokens).toBe(
+      validResponse.body.usage.prompt_tokens + validResponse.body.usage.completion_tokens
     );
   });
 
@@ -264,16 +274,21 @@ describe('/v1/chat/completions', () => {
     const usage = response.body.usage;
 
     expect(usage).toMatchObject({
-      promptTokens: expect.any(Number),
-      completionTokens: expect.any(Number),
-      totalTokens: expect.any(Number)
+      prompt_tokens: expect.any(Number),
+      completion_tokens: expect.any(Number),
+      total_tokens: expect.any(Number),
+      completion_tokens_details: {
+        reasoning_tokens: expect.any(Number),
+        accepted_prediction_tokens: expect.any(Number),
+        rejected_prediction_tokens: expect.any(Number)
+      }
     });
 
     // Verify token counts are reasonable
-    expect(usage.promptTokens).toBeGreaterThan(0);
-    expect(usage.completionTokens).toBeGreaterThan(0);
-    expect(usage.totalTokens).toBe(
-      usage.promptTokens + usage.completionTokens
+    expect(usage.prompt_tokens).toBeGreaterThan(0);
+    expect(usage.completion_tokens).toBeGreaterThan(0);
+    expect(usage.total_tokens).toBe(
+      usage.prompt_tokens + usage.completion_tokens
     );
   });
 });
