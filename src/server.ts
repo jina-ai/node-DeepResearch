@@ -38,24 +38,22 @@ interface QueryRequest extends Request {
 
 // OpenAI-compatible chat completions endpoint
 app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
+  // Check authentication if secret is set
+  const authHeader = req.headers.authorization;
+  if (secret && (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== secret)) {
+    console.log('[chat/completions] Unauthorized request');
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
   // Log request details (excluding sensitive data)
   console.log('[chat/completions] Request:', {
     model: req.body.model,
     stream: req.body.stream,
     messageCount: req.body.messages?.length,
-    hasAuth: !!req.headers.authorization,
+    hasAuth: !!authHeader,
     requestId: Date.now().toString()
   });
-
-  // Check authentication if secret is set
-  const authHeader = req.headers.authorization;
-  if (secret) {
-    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== secret) {
-      console.log('[chat/completions] Unauthorized request');
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-  }
 
   const body = req.body as ChatCompletionRequest;
   if (!body.messages?.length) {
