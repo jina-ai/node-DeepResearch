@@ -7,7 +7,7 @@ let app: any; // Make app mutable for test reloading
 describe('/v1/chat/completions', () => {
   jest.setTimeout(120000); // Increase timeout for all tests in this suite
   
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clean up any existing secret
     const existingSecretIndex = process.argv.findIndex(arg => arg.startsWith('--secret='));
     if (existingSecretIndex !== -1) {
@@ -22,7 +22,9 @@ describe('/v1/chat/completions', () => {
     process.argv.push(`--secret=${TEST_SECRET}`);
     
     // Re-import server with new secret
-    app = require('../server').default;
+    return import('../server').then(module => {
+      app = module.default;
+    });
   });
   
   afterEach(() => {
