@@ -103,7 +103,9 @@ export DEFAULT_MODEL_NAME=qwen2.5-7b  # your local llm model name
 ```
 
 
-## Web Server API
+## Server API
+
+### OpenAI-Compatible Chat Completions
 
 Start the server:
 ```bash
@@ -114,10 +116,9 @@ npm run serve
 npm run serve --secret=your_secret_token
 ```
 
-The server will start on http://localhost:3000 with the following endpoints:
+The server will start on http://localhost:3000 with the following endpoint:
 
-### POST /v1/chat/completions
-OpenAI-compatible chat completions endpoint:
+#### POST /v1/chat/completions
 ```bash
 # Without authentication
 curl http://localhost:3000/v1/chat/completions \
@@ -205,60 +206,33 @@ Note: The think content in streaming responses is wrapped in XML tags:
 [final answer]
 ```
 
-### POST /api/v1/query
-Submit a query to be answered:
+## Server Setup
+
+### Local Setup
+Start the server:
 ```bash
-curl -X POST http://localhost:3000/api/v1/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "q": "what is the capital of France?",
-    "budget": 1000000,
-    "maxBadAttempt": 3
-  }'
+# Without authentication
+npm run serve
+
+# With authentication (clients must provide this secret as Bearer token)
+npm run serve --secret=your_secret_token
 ```
 
-Response:
-```json
-{
-  "requestId": "1234567890"
-}
-```
+### Docker Setup
 
-### GET /api/v1/stream/:requestId
-Connect to the Server-Sent Events stream to receive progress updates and the final answer:
-```bash
-curl -N http://localhost:3000/api/v1/stream/1234567890
-```
-
-The server will emit the following event types:
-- Progress updates: Step number and budget usage
-- Final answer with complete response data
-- Error messages if something goes wrong
-
-Example events:
-```
-data: {"type":"progress","trackers":{"tokenUsage":74950,"tokenBreakdown":{"agent":64631,"read":10319},"actionState":{"action":"search","think":"The provided text mentions several investors in Jina AI but doesn't specify ownership percentages.  A direct search for ownership percentages is needed to answer the question definitively.","URLTargets":[],"answer":"","questionsToAnswer":[],"references":[],"searchQuery":"Jina AI investor ownership percentages"},"step":7,"badAttempts":0,"gaps":[]}}
-
-data: {"type":"progress","trackers":{"tokenUsage":74950,"tokenBreakdown":{"agent":64631,"read":10319},"actionState":{"action":"search","think":"The provided text mentions several investors in Jina AI's funding rounds but doesn't specify ownership percentages.  A search focusing on equity stakes and ownership percentages held by each investor will provide the necessary information to answer the main question.","URLTargets":[],"answer":"","questionsToAnswer":[],"references":[],"searchQuery":"Jina AI investor equity percentage ownership stake"},"step":8,"badAttempts":0,"gaps":[]}}
-
-data: {"type":"progress","trackers":{"tokenUsage":88096,"tokenBreakdown":{"agent":77777,"read":10319},"actionState":{"action":"search","think":"The provided text mentions several investors in Jina AI's funding rounds but doesn't specify ownership percentages.  A search focusing on equity stakes and ownership percentages held by each investor will provide the necessary information to answer the main question.","URLTargets":[],"answer":"","questionsToAnswer":[],"references":[],"searchQuery":"Jina AI investor equity percentage ownership stake"},"step":8,"badAttempts":0,"gaps":[]}}
-```
-
-## Docker
-
-### Build Docker Image
+#### Build Docker Image
 To build the Docker image for the application, run the following command:
 ```bash
 docker build -t deepresearch:latest .
 ```
 
-### Run Docker Container
+#### Run Docker Container
 To run the Docker container, use the following command:
 ```bash
 docker run -p 3000:3000 --env GEMINI_API_KEY=your_gemini_api_key --env JINA_API_KEY=your_jina_api_key deepresearch:latest
 ```
 
-### Docker Compose
+#### Docker Compose
 You can also use Docker Compose to manage multi-container applications. To start the application with Docker Compose, run:
 ```bash
 docker-compose up
