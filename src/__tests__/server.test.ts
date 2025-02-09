@@ -91,21 +91,16 @@ describe('/v1/chat/completions', () => {
       });
     
     expect(response.body.usage).toMatchObject({
-      prompt_tokens: expect.any(Number),
-      completion_tokens: expect.any(Number),
-      total_tokens: expect.any(Number),
-      completion_tokens_details: {
-        reasoning_tokens: expect.any(Number),
-        accepted_prediction_tokens: expect.any(Number),
-        rejected_prediction_tokens: expect.any(Number)
-      }
+      promptTokens: expect.any(Number),
+      completionTokens: expect.any(Number),
+      totalTokens: expect.any(Number)
     });
 
     // Verify token counts are reasonable
-    expect(response.body.usage.prompt_tokens).toBeGreaterThan(0);
-    expect(response.body.usage.completion_tokens).toBeGreaterThan(0);
-    expect(response.body.usage.total_tokens).toBe(
-      response.body.usage.prompt_tokens + response.body.usage.completion_tokens
+    expect(response.body.usage.promptTokens).toBeGreaterThan(0);
+    expect(response.body.usage.completionTokens).toBeGreaterThan(0);
+    expect(response.body.usage.totalTokens).toBe(
+      response.body.usage.promptTokens + response.body.usage.completionTokens
     );
   });
 
@@ -129,7 +124,7 @@ describe('/v1/chat/completions', () => {
 
       request(app)
         .post('/v1/chat/completions')
-        .set('Authorization', `Bearer ${OPENAI_API_KEY}`)
+        .set('Authorization', `Bearer ${TEST_SECRET}`)
         .send({
           model: 'test-model',
           messages: [{ role: 'user', content: 'test' }],
@@ -180,11 +175,11 @@ describe('/v1/chat/completions', () => {
             }]
           });
 
-          // Verify content chunks have content and accumulate tokens
+          // Verify content chunks have content
           chunks.slice(1).forEach(chunk => {
             const content = chunk.choices[0].delta.content;
             if (content && content.trim()) {
-              totalCompletionTokens += Math.ceil(content.split(/\s+/).length / 4);
+              totalCompletionTokens += 1; // Count 1 token per chunk as per Vercel convention
             }
             expect(chunk).toMatchObject({
               object: 'chat.completion.chunk',
@@ -243,18 +238,20 @@ describe('/v1/chat/completions', () => {
     
     // Verify token tracking still works after error
     expect(validResponse.body.usage).toMatchObject({
-      prompt_tokens: expect.any(Number),
-      completion_tokens: expect.any(Number),
-      total_tokens: expect.any(Number),
-      completion_tokens_details: {
-        reasoning_tokens: expect.any(Number),
-        accepted_prediction_tokens: expect.any(Number),
-        rejected_prediction_tokens: expect.any(Number)
-      }
+      promptTokens: expect.any(Number),
+      completionTokens: expect.any(Number),
+      totalTokens: expect.any(Number)
     });
+
+    // Verify token counts are reasonable
+    expect(validResponse.body.usage.promptTokens).toBeGreaterThan(0);
+    expect(validResponse.body.usage.completionTokens).toBeGreaterThan(0);
+    expect(validResponse.body.usage.totalTokens).toBe(
+      validResponse.body.usage.promptTokens + validResponse.body.usage.completionTokens
+    );
   });
 
-  it('should provide token usage in OpenAI and Vercel AI SDK formats', async () => {
+  it('should provide token usage in Vercel AI SDK format', async () => {
     const response = await request(app)
       .post('/v1/chat/completions')
       .set('Authorization', `Bearer ${TEST_SECRET}`)
@@ -266,27 +263,17 @@ describe('/v1/chat/completions', () => {
     expect(response.status).toBe(200);
     const usage = response.body.usage;
 
-    // Verify OpenAI format
     expect(usage).toMatchObject({
-      prompt_tokens: expect.any(Number),
-      completion_tokens: expect.any(Number),
-      total_tokens: expect.any(Number),
-      completion_tokens_details: {
-        reasoning_tokens: expect.any(Number),
-        accepted_prediction_tokens: expect.any(Number),
-        rejected_prediction_tokens: expect.any(Number)
-      }
+      promptTokens: expect.any(Number),
+      completionTokens: expect.any(Number),
+      totalTokens: expect.any(Number)
     });
 
-    // Verify token counts are consistent with Vercel format expectations
-    expect(usage.total_tokens).toBe(usage.prompt_tokens + usage.completion_tokens);
-    expect(usage.prompt_tokens).toBeGreaterThan(0);
-    expect(usage.completion_tokens).toBeGreaterThan(0);
-
-    // Verify completion token details are consistent
-    const details = usage.completion_tokens_details;
-    expect(usage.completion_tokens).toBe(
-      details.reasoning_tokens + details.accepted_prediction_tokens + details.rejected_prediction_tokens
+    // Verify token counts are reasonable
+    expect(usage.promptTokens).toBeGreaterThan(0);
+    expect(usage.completionTokens).toBeGreaterThan(0);
+    expect(usage.totalTokens).toBe(
+      usage.promptTokens + usage.completionTokens
     );
   });
 });

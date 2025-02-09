@@ -35,6 +35,31 @@ export class TokenTracker extends EventEmitter {
     }, {} as Record<string, number>);
   }
 
+  getVercelUsage(): {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  } {
+    const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
+      if (category) {
+        acc[category] = (acc[category] || 0) + tokens;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const promptTokens = categoryBreakdown.prompt || 0;
+    const completionTokens = 
+      (categoryBreakdown.reasoning || 0) + 
+      (categoryBreakdown.accepted || 0) + 
+      (categoryBreakdown.rejected || 0);
+
+    return {
+      promptTokens,
+      completionTokens,
+      totalTokens: promptTokens + completionTokens
+    };
+  }
+
   getOpenAIUsage(): {
     prompt_tokens: number;
     completion_tokens: number;
@@ -62,44 +87,6 @@ export class TokenTracker extends EventEmitter {
         accepted_prediction_tokens: categoryBreakdown.accepted || 0,
         rejected_prediction_tokens: categoryBreakdown.rejected || 0
       }
-    };
-  }
-
-  getVercelUsage(): {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  } {
-    const categoryBreakdown = this.usages.reduce((acc, { tokens, category }) => {
-      if (category) {
-        acc[category] = (acc[category] || 0) + tokens;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    const promptTokens = categoryBreakdown.prompt || 0;
-    const completionTokens = 
-      (categoryBreakdown.reasoning || 0) + 
-      (categoryBreakdown.accepted || 0) + 
-      (categoryBreakdown.rejected || 0);
-
-    return {
-      promptTokens,
-      completionTokens,
-      totalTokens: promptTokens + completionTokens
-    };
-  }
-
-  getVercelUsage(): {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  } {
-    const openAIUsage = this.getOpenAIUsage();
-    return {
-      promptTokens: openAIUsage.prompt_tokens,
-      completionTokens: openAIUsage.completion_tokens,
-      totalTokens: openAIUsage.total_tokens
     };
   }
 

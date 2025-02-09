@@ -28,7 +28,7 @@
   "dependencies": {
     "@ai-sdk/google": "^1.0.0",
     "@ai-sdk/openai": "^1.1.9",
-    "ai": "^4.1.21",
+    "ai": "^4.1.26",
     "axios": "^1.7.9",
     "commander": "^13.1.0",
     "cors": "^2.8.5",
