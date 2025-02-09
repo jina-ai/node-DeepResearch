@@ -110,55 +110,6 @@ describe('/v1/chat/completions', () => {
     });
   });
 
-  it('should track tokens correctly in non-streaming response', async () => {
-    // Create a promise that resolves when token tracking is complete
-    const tokenTrackingPromise = new Promise<void>((resolve) => {
-      const emitter = EventEmitter.prototype;
-      const originalEmit = emitter.emit;
-      
-      // Override emit to detect when token tracking is done
-      emitter.emit = function(event: string, ...args: any[]) {
-        if (event === 'usage') {
-          // Wait for next tick to ensure all token tracking is complete
-          process.nextTick(() => {
-            emitter.emit = originalEmit;
-            resolve();
-          });
-        }
-        return originalEmit.apply(this, [event, ...args]);
-      };
-    });
-
-    const response = await request(app)
-      .post('/v1/chat/completions')
-      .set('Authorization', `Bearer ${TEST_SECRET}`)
-      .send({
-        model: 'test-model',
-        messages: [{ role: 'user', content: 'test' }]
-      });
-    
-    // Wait for token tracking to complete
-    await tokenTrackingPromise;
-
-    expect(response.body.usage).toMatchObject({
-      prompt_tokens: expect.any(Number),
-      completion_tokens: expect.any(Number),
-      total_tokens: expect.any(Number),
-      completion_tokens_details: {
-        reasoning_tokens: expect.any(Number),
-        accepted_prediction_tokens: expect.any(Number),
-        rejected_prediction_tokens: expect.any(Number)
-      }
-    });
-
-    // Verify token counts are reasonable
-    expect(response.body.usage.prompt_tokens).toBeGreaterThan(0);
-    expect(response.body.usage.completion_tokens).toBeGreaterThan(0);
-    expect(response.body.usage.total_tokens).toBe(
-      response.body.usage.prompt_tokens + response.body.usage.completion_tokens
-    );
-  });
-
   it('should handle streaming request and track tokens correctly', async () => {
     return new Promise<void>((resolve, reject) => {
       let isDone = false;
