@@ -1,8 +1,9 @@
 import request from 'supertest';
 import { EventEmitter } from 'events';
+import type { Express } from 'express';
 
 const TEST_SECRET = 'test-secret';
-let app: any; // Make app mutable for test reloading
+let app: Express;
 
 describe('/v1/chat/completions', () => {
   jest.setTimeout(120000); // Increase timeout for all tests in this suite
@@ -22,9 +23,8 @@ describe('/v1/chat/completions', () => {
     process.argv.push(`--secret=${TEST_SECRET}`);
     
     // Re-import server with new secret
-    return import('../server').then(module => {
-      app = module.default;
-    });
+    const module = await import('../server');
+    app = module.default;
   });
   
   afterEach(() => {
