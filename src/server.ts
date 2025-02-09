@@ -48,10 +48,13 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   });
 
   // Check authentication if secret is set
-  if (secret && (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ') || req.headers.authorization.split(' ')[1] !== secret)) {
-    console.log('[chat/completions] Unauthorized request');
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
+  const authHeader = req.headers.authorization;
+  if (secret) {
+    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== secret) {
+      console.log('[chat/completions] Unauthorized request');
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
   }
 
   const body = req.body as ChatCompletionRequest;
