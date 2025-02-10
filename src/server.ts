@@ -10,7 +10,8 @@ import {
   ChatCompletionResponse,
   ChatCompletionChunk,
   AnswerAction,
-  TOKEN_CATEGORIES
+  TOKEN_CATEGORIES,
+  Model
 } from './types';
 import fs from 'fs/promises';
 import path from 'path';
@@ -119,6 +120,44 @@ async function completeCurrentStreaming(
 }
 
 // OpenAI-compatible chat completions endpoint
+// Models API endpoints
+app.get('/v1/models', (async (_req: Request, res: Response) => {
+  const models: Model[] = [{
+    id: 'jina-deepsearch-v1',
+    object: 'model',
+    created: 1686935002,
+    owned_by: 'jina-ai'
+  }];
+
+  res.json({
+    object: 'list',
+    data: models
+  });
+}) as RequestHandler);
+
+app.get('/v1/models/:model', (async (req: Request, res: Response) => {
+  const modelId = req.params.model;
+  
+  if (modelId === 'jina-deepsearch-v1') {
+    res.json({
+      id: 'jina-deepsearch-v1',
+      object: 'model',
+      created: 1686935002,
+      owned_by: 'jina-ai'
+    });
+  } else {
+    res.status(404).json({
+      error: {
+        message: `Model '${modelId}' not found`,
+        type: 'invalid_request_error',
+        param: null,
+        code: 'model_not_found'
+      }
+    });
+  }
+}) as RequestHandler);
+
+
 app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   // Check authentication only if secret is set
   if (secret) {

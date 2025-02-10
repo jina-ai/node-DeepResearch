@@ -159,6 +159,13 @@ export interface StreamMessage {
 }
 
 // OpenAI API Types
+export interface Model {
+  id: string;
+  object: 'model';
+  created: number;
+  owned_by: string;
+}
+
 export interface ChatCompletionRequest {
   model: string;
   messages: Array<{
