@@ -26,6 +26,11 @@ const secret = process.argv.find(arg => arg.startsWith('--secret='))?.split('=')
 app.use(cors());
 app.use(express.json());
 
+// Add health check endpoint for Docker container verification
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 const eventEmitter = new EventEmitter();
 
 interface QueryRequest extends Request {
