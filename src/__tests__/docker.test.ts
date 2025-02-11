@@ -7,7 +7,7 @@ describe('Docker build', () => {
   jest.setTimeout(300000); // 5 minutes for build
 
   it('should build Docker image successfully', async () => {
-    const { stdout, stderr } = await execAsync('docker build -t node-deepresearch-test .');
+    const { stderr } = await execAsync('docker build -t node-deepresearch-test .');
     expect(stderr).not.toContain('error');
   });
 
