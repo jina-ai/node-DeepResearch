@@ -31,3 +31,15 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: npm test
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run Docker tests
+        env:
+          BRAVE_API_KEY: mock_key
+          GEMINI_API_KEY: mock_key
+          JINA_API_KEY: mock_key
+          GOOGLE_API_KEY: mock_key
+          OPENAI_API_KEY: mock_key
+        run: npm run test:docker
