@@ -17,5 +17,5 @@ module.exports = {
     'no-console': ['error', { allow: ['log', 'error'] }],
     '@typescript-eslint/no-explicit-any': 'off'
   },
-  ignores: ["src/jina-ai/**/*"]
+  ignorePatterns: ["jina-ai/**/*"]
 };
