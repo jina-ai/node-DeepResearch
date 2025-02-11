@@ -18,7 +18,8 @@
     "start": "ts-node src/server.ts",
     "eval": "ts-node src/evals/batch-evals.ts",
     "test": "jest --testTimeout=30000",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:docker": "jest src/__tests__/docker.test.ts --testTimeout=300000"
   },
   "keywords": [],
   "author": "Jina AI",
