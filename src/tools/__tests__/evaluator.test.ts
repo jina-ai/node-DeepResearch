@@ -25,7 +25,12 @@ describe('evaluateAnswer', () => {
         const tokenTracker = new TokenTracker();
         const { response } = await evaluateAnswer(
           'What is TypeScript?',
-          'TypeScript is a strongly typed programming language that builds on JavaScript.',
+          {
+            action: "answer",
+            think: "Providing a clear definition of TypeScript",
+            answer: "TypeScript is a strongly typed programming language that builds on JavaScript.",
+            references: []
+          },
           ['definitive'],
           tokenTracker
         );
@@ -38,7 +43,12 @@ describe('evaluateAnswer', () => {
         const tokenTracker = new TokenTracker();
         const { response } = await evaluateAnswer(
           'List three programming languages.',
-          'Python is a programming language.',
+          {
+            action: "answer",
+            think: "Providing an example of a programming language",
+            answer: "Python is a programming language.",
+            references: []
+          },
           ['plurality'],
           tokenTracker
         );
