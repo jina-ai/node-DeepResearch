@@ -195,12 +195,7 @@ Response format:
   "usage": {
     "prompt_tokens": 9,
     "completion_tokens": 12,
-    "total_tokens": 21,
-    "completion_tokens_details": {
-      "reasoning_tokens": 0,
-      "accepted_prediction_tokens": 0,
-      "rejected_prediction_tokens": 0
-    }
+    "total_tokens": 21
   }
 }
 ```

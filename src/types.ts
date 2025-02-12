@@ -181,11 +181,6 @@ export interface ChatCompletionResponse {
     prompt_tokens: number;
     completion_tokens: number;
     total_tokens: number;
-    completion_tokens_details?: {
-      reasoning_tokens: number;
-      accepted_prediction_tokens: number;
-      rejected_prediction_tokens: number;
-    };
   };
 }
 
