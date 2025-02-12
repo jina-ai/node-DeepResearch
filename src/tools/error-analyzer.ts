@@ -1,11 +1,8 @@
 import {z} from 'zod';
-import {generateObject} from 'ai';
-import {getModel, getMaxTokens} from "../config";
 import {TokenTracker} from "../utils/token-tracker";
 import {ErrorAnalysisResponse} from '../types';
-import {handleGenerateObjectError} from '../utils/error-handling';
+import {ObjectGeneratorSafe} from "../utils/safe-generator";
 
-const model = getModel('errorAnalyzer');
 
 const responseSchema = z.object({
   recap: z.string().describe('Recap of the actions taken and the steps conducted'),
@@ -111,33 +108,27 @@ ${diaryContext.join('\n')}
 `;
 }
 
-export async function analyzeSteps(diaryContext: string[], tracker?: TokenTracker): Promise<{ response: ErrorAnalysisResponse }> {
+const TOOL_NAME = 'errorAnalyzer';
+export async function analyzeSteps(
+  diaryContext: string[],
+  tracker?: TokenTracker
+): Promise<{ response: ErrorAnalysisResponse }> {
   try {
+    const generator = new ObjectGeneratorSafe(tracker);
     const prompt = getPrompt(diaryContext);
-    let object;
-    let usage;
-    try {
-      const result = await generateObject({
-        model,
-        schema: responseSchema,
-        prompt,
-        maxTokens: getMaxTokens('errorAnalyzer')
-      });
-      object = result.object;
-      usage = result.usage;
-    } catch (error) {
-      const result = await handleGenerateObjectError<ErrorAnalysisResponse>(error);
-      object = result.object;
-      usage = result.usage;
-    }
-    console.log('Error analysis:', {
-      is_valid: !object.blame,
-      reason: object.blame || 'No issues found'
+
+    const result = await generator.generateObject({
+      model: TOOL_NAME,
+      schema: responseSchema,
+      prompt,
     });
-    (tracker || new TokenTracker()).trackUsage('error-analyzer', usage);
-    return {response: object};
+
+    console.log(TOOL_NAME, result.object);
+
+    return { response: result.object };
+
   } catch (error) {
-    console.error('Error in answer evaluation:', error);
+    console.error(`Error in ${TOOL_NAME}`, error);
     throw error;
   }
 }

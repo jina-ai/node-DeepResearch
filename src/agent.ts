@@ -1,8 +1,7 @@
 import {z, ZodObject} from 'zod';
-import {CoreAssistantMessage, CoreUserMessage, generateObject} from 'ai';
-import {getModel, getMaxTokens, SEARCH_PROVIDER, STEP_SLEEP} from "./config";
+import {CoreAssistantMessage, CoreUserMessage} from 'ai';
+import {SEARCH_PROVIDER, STEP_SLEEP} from "./config";
 import {readUrl, removeAllLineBreaks} from "./tools/read";
-import {handleGenerateObjectError} from './utils/error-handling';
 import fs from 'fs/promises';
 import {SafeSearchType, search as duckSearch} from "duck-duck-scrape";
 import {braveSearch} from "./tools/brave-search";
@@ -17,6 +16,7 @@ import {TrackerContext} from "./types";
 import {search} from "./tools/jina-search";
 // import {grounding} from "./tools/grounding";
 import {zodToJsonSchema} from "zod-to-json-schema";
+import {ObjectGeneratorSafe} from "./utils/safe-generator";
 
 async function sleep(ms: number) {
   const seconds = Math.ceil(ms / 1000);
@@ -364,23 +364,13 @@ export async function getResponse(question: string,
       false
     );
     schema = getSchema(allowReflect, allowRead, allowAnswer, allowSearch)
-    const model = getModel('agent');
-    let object;
-    try {
-      const result = await generateObject({
-        model,
-        schema,
-        prompt,
-        maxTokens: getMaxTokens('agent')
-      });
-      object = result.object;
-      context.tokenTracker.trackUsage('agent', result.usage);
-    } catch (error) {
-      const result = await handleGenerateObjectError<StepAction>(error);
-      object = result.object;
-      context.tokenTracker.trackUsage('agent', result.usage);
-    }
-    thisStep = object as StepAction;
+    const generator = new ObjectGeneratorSafe(context.tokenTracker);
+    const result = await generator.generateObject({
+      model: 'agent',
+      schema,
+      prompt,
+    });
+    thisStep = result.object as StepAction;
     // print allowed and chose action
     const actionsStr = [allowSearch, allowRead, allowAnswer, allowReflect].map((a, i) => a ? ['search', 'read', 'answer', 'reflect'][i] : null).filter(a => a).join(', ');
     console.log(`${thisStep.action} <- [${actionsStr}]`);
@@ -464,6 +454,7 @@ ${evaluation.think}
             });
 
             if (errorAnalysis.questionsToAnswer) {
+              // reranker? maybe
               gaps.push(...errorAnalysis.questionsToAnswer.slice(0, 2));
               allQuestions.push(...errorAnalysis.questionsToAnswer.slice(0, 2));
               gaps.push(question.trim());  // always keep the original question in the gaps
@@ -510,8 +501,8 @@ ${newGapQuestions.map((q: string) => `- ${q}`).join('\n')}
 
 You will now figure out the answers to these sub-questions and see if they can help you find the answer to the original question.
 `);
-        gaps.push(...newGapQuestions);
-        allQuestions.push(...newGapQuestions);
+        gaps.push(...newGapQuestions.slice(0, 2));
+        allQuestions.push(...newGapQuestions.slice(0, 2));
         gaps.push(question.trim());  // always keep the original question in the gaps
       } else {
         diaryContext.push(`
@@ -708,24 +699,15 @@ You decided to think out of the box or cut from a completely different angle.`);
     );
 
     schema = getSchema(false, false, true, false);
-    const model = getModel('agentBeastMode');
-    let object;
-    try {
-      const result = await generateObject({
-        model,
-        schema: schema,
-        prompt,
-        maxTokens: getMaxTokens('agentBeastMode')
-      });
-      object = result.object;
-      context.tokenTracker.trackUsage('agent', result.usage);
-    } catch (error) {
-      const result = await handleGenerateObjectError<StepAction>(error);
-      object = result.object;
-      context.tokenTracker.trackUsage('agent', result.usage);
-    }
+    const generator = new ObjectGeneratorSafe(context.tokenTracker);
+    const result = await generator.generateObject({
+      model: 'agentBeastMode',
+      schema,
+      prompt,
+    });
+
     await storeContext(prompt, schema, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
-    thisStep = object as StepAction;
+    thisStep = result.object as StepAction;
     context.actionTracker.trackAction({totalStep, thisStep, gaps, badAttempts});
 
     console.log(thisStep)

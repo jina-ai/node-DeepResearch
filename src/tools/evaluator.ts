@@ -1,12 +1,10 @@
 import {z} from 'zod';
-import {generateObject, GenerateObjectResult} from 'ai';
-import {getModel, getMaxTokens} from "../config";
+import {GenerateObjectResult} from 'ai';
 import {TokenTracker} from "../utils/token-tracker";
 import {AnswerAction, EvaluationResponse} from '../types';
-import {handleGenerateObjectError} from '../utils/error-handling';
 import {readUrl, removeAllLineBreaks} from "./read";
+import {ObjectGeneratorSafe} from "../utils/safe-generator";
 
-const model = getModel('evaluator');
 
 type EvaluationType = 'definitive' | 'freshness' | 'plurality' | 'attribution';
 
@@ -371,19 +369,21 @@ Now evaluate this question:
 Question: ${JSON.stringify(question)}`;
 }
 
+const TOOL_NAME = 'evaluator';
+
 export async function evaluateQuestion(
   question: string,
   tracker?: TokenTracker
 ): Promise<EvaluationType[]> {
   try {
-    const result = await generateObject({
-      model: getModel('evaluator'),
+    const generator = new ObjectGeneratorSafe(tracker);
+
+    const result = await generator.generateObject({
+      model: TOOL_NAME,
       schema: questionEvaluationSchema,
       prompt: getQuestionEvaluationPrompt(question),
-      maxTokens: getMaxTokens('evaluator')
     });
 
-    (tracker || new TokenTracker()).trackUsage('evaluator', result.usage);
     console.log('Question Evaluation:', result.object);
 
     // Always include definitive in types
@@ -391,49 +391,38 @@ export async function evaluateQuestion(
     if (result.object.needsFreshness) types.push('freshness');
     if (result.object.needsPlurality) types.push('plurality');
 
-    console.log('Question Metrics:', types)
+    console.log('Question Metrics:', types);
 
     // Always evaluate definitive first, then freshness (if needed), then plurality (if needed)
     return types;
+
   } catch (error) {
-    const errorResult = await handleGenerateObjectError<EvaluationResponse>(error);
-    (tracker || new TokenTracker()).trackUsage('evaluator', errorResult.usage);
+    console.error('Error in question evaluation:', error);
+    // Default to all evaluation types in case of error
     return ['definitive', 'freshness', 'plurality'];
   }
 }
 
 
-// Helper function to handle common evaluation logic
-async function performEvaluation(
+async function performEvaluation<T>(
   evaluationType: EvaluationType,
   params: {
-    model: any;
-    schema: z.ZodType<any>;
+    schema: z.ZodType<T>;
     prompt: string;
-    maxTokens: number;
   },
   tracker?: TokenTracker
-): Promise<GenerateObjectResult<any>> {
-  try {
-    const result = await generateObject({
-      model: params.model,
-      schema: params.schema,
-      prompt: params.prompt,
-      maxTokens: params.maxTokens
-    });
+): Promise<GenerateObjectResult<T>> {
+  const generator = new ObjectGeneratorSafe(tracker);
 
-    (tracker || new TokenTracker()).trackUsage('evaluator', result.usage);
-    console.log(`${evaluationType} Evaluation:`, result.object);
+  const result = await generator.generateObject({
+    model: TOOL_NAME,
+    schema: params.schema,
+    prompt: params.prompt,
+  });
 
-    return result;
-  } catch (error) {
-    const errorResult = await handleGenerateObjectError<any>(error);
-    (tracker || new TokenTracker()).trackUsage('evaluator', errorResult.usage);
-    return {
-        object: errorResult.object,
-        usage: errorResult.usage
-    } as GenerateObjectResult<any>;
-  }
+  console.log(`${evaluationType} ${TOOL_NAME}`, result.object);
+
+  return result as GenerateObjectResult<any>;
 }
 
 
@@ -452,84 +441,70 @@ export async function evaluateAnswer(
   }
 
   for (const evaluationType of evaluationOrder) {
-    try {
-      switch (evaluationType) {
-        case 'attribution': {
-          // Safely handle references and ensure we have content
-          const urls = action.references?.map(ref => ref.url) ?? [];
-          const uniqueURLs = [...new Set(urls)];
-          const allKnowledge = await fetchSourceContent(uniqueURLs, tracker);
+    switch (evaluationType) {
+      case 'attribution': {
+        // Safely handle references and ensure we have content
+        const urls = action.references?.map(ref => ref.url) ?? [];
+        const uniqueURLs = [...new Set(urls)];
+        const allKnowledge = await fetchSourceContent(uniqueURLs, tracker);
 
-          if (!allKnowledge.trim()) {
-            return {
-              response: {
-                pass: false,
-                think: "The answer does not provide any valid attribution references that could be verified. No accessible source content was found to validate the claims made in the answer.",
-                type: 'attribution',
-              }
-            };
-          }
-
-          result = await performEvaluation(
-            'attribution',
-            {
-              model,
-              schema: attributionSchema,
-              prompt: getAttributionPrompt(question, action.answer, allKnowledge),
-              maxTokens: getMaxTokens('evaluator')
-            },
-            tracker
-          );
-          break;
+        if (!allKnowledge.trim()) {
+          return {
+            response: {
+              pass: false,
+              think: "The answer does not provide any valid attribution references that could be verified. No accessible source content was found to validate the claims made in the answer.",
+              type: 'attribution',
+            }
+          };
         }
 
-        case 'definitive':
-          result = await performEvaluation(
-            'definitive',
-            {
-              model,
-              schema: definitiveSchema,
-              prompt: getDefinitivePrompt(question, action.answer),
-              maxTokens: getMaxTokens('evaluator')
-            },
-            tracker
-          );
-          break;
-
-        case 'freshness':
-          result = await performEvaluation(
-            'freshness',
-            {
-              model,
-              schema: freshnessSchema,
-              prompt: getFreshnessPrompt(question, action.answer, new Date().toISOString()),
-              maxTokens: getMaxTokens('evaluator')
-            },
-            tracker
-          );
-          break;
-
-        case 'plurality':
-          result = await performEvaluation(
-            'plurality',
-            {
-              model,
-              schema: pluralitySchema,
-              prompt: getPluralityPrompt(question, action.answer),
-              maxTokens: getMaxTokens('evaluator')
-            },
-            tracker
-          );
-          break;
+        result = await performEvaluation(
+          'attribution',
+          {
+            schema: attributionSchema,
+            prompt: getAttributionPrompt(question, action.answer, allKnowledge),
+          },
+          tracker
+        );
+        break;
       }
 
-      if (!result?.object.pass) {
-        return {response: result.object};
-      }
-    } catch (error) {
-      const errorResult = await handleGenerateObjectError<EvaluationResponse>(error);
-      (tracker || new TokenTracker()).trackUsage('evaluator', errorResult.usage);
-      return {response: errorResult.object};
+      case 'definitive':
+        result = await performEvaluation(
+          'definitive',
+          {
+            schema: definitiveSchema,
+            prompt: getDefinitivePrompt(question, action.answer),
+          },
+          tracker
+        );
+        break;
+
+      case 'freshness':
+        result = await performEvaluation(
+          'freshness',
+          {
+            schema: freshnessSchema,
+            prompt: getFreshnessPrompt(question, action.answer, new Date().toISOString()),
+          },
+          tracker
+        );
+        break;
+
+      case 'plurality':
+        result = await performEvaluation(
+          'plurality',
+          {
+            schema: pluralitySchema,
+            prompt: getPluralityPrompt(question, action.answer),
+          },
+          tracker
+        );
+        break;
+    }
+
+    if (!result?.object.pass) {
+      return {response: result.object};
     }
   }
 

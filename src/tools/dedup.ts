@@ -1,11 +1,7 @@
 import {z} from 'zod';
-import {generateObject} from 'ai';
-import {getModel, getMaxTokens} from "../config";
 import {TokenTracker} from "../utils/token-tracker";
-import {handleGenerateObjectError} from '../utils/error-handling';
-import type {DedupResponse} from '../types';
+import {ObjectGeneratorSafe} from "../utils/safe-generator";
 
-const model = getModel('dedup');
 
 const responseSchema = z.object({
   think: z.string().describe('Strategic reasoning about the overall deduplication approach'),
@@ -65,31 +61,29 @@ SetA: ${JSON.stringify(newQueries)}
 SetB: ${JSON.stringify(existingQueries)}`;
 }
 
-export async function dedupQueries(newQueries: string[], existingQueries: string[], tracker?: TokenTracker): Promise<{ unique_queries: string[] }> {
-  try {
-    const prompt = getPrompt(newQueries, existingQueries);
-    let object;
-    let usage;
-    try {
-      const result = await generateObject({
-        model,
-        schema: responseSchema,
-        prompt,
-        maxTokens: getMaxTokens('dedup')
-      });
-      object = result.object;
-      usage = result.usage
-    } catch (error) {
-      const result = await handleGenerateObjectError<DedupResponse>(error);
-      object = result.object;
-      usage = result.usage
-    }
-    console.log('Dedup:', object.unique_queries);
-    (tracker || new TokenTracker()).trackUsage('dedup', usage);
 
-    return {unique_queries: object.unique_queries};
+const TOOL_NAME = 'dedup';
+
+export async function dedupQueries(
+  newQueries: string[],
+  existingQueries: string[],
+  tracker?: TokenTracker
+): Promise<{ unique_queries: string[] }> {
+  try {
+    const generator = new ObjectGeneratorSafe(tracker);
+    const prompt = getPrompt(newQueries, existingQueries);
+
+    const result = await generator.generateObject({
+      model: TOOL_NAME,
+      schema: responseSchema,
+      prompt,
+    });
+
+    console.log(TOOL_NAME, result.object.unique_queries);
+    return {unique_queries: result.object.unique_queries};
+
   } catch (error) {
-    console.error('Error in deduplication analysis:', error);
+    console.error(`Error in ${TOOL_NAME}`, error);
     throw error;
   }
 }

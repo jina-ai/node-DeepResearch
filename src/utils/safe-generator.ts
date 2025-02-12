@@ -51,13 +51,14 @@ export class ObjectGeneratorSafe {
       } catch (parseError) {
         // Second fallback: Try with fallback model if provided
         const fallbackModel = getModel('fallback');
-        if (fallbackModel) {
-          console.error(`${model} failed on object generation -> manual parsing failed again -> trying fallback model`, fallbackModel);
+        if (NoObjectGeneratedError.isInstance(parseError)) {
+          const failedOutput = (parseError as any).text;
+          console.error(`${model} failed on object generation ${failedOutput} -> manual parsing failed again -> trying fallback model`, fallbackModel);
           try {
             const fallbackResult = await generateObject({
               model: fallbackModel,
               schema,
-              prompt: 'Extract the desired information from this text: \n' + (error as any).text,
+              prompt: `Extract the desired information from this text: \n ${failedOutput}`,
               maxTokens: getToolConfig('fallback').maxTokens,
               temperature: getToolConfig('fallback').temperature,
             });
