@@ -1,11 +1,8 @@
 import { z } from 'zod';
-import { generateObject } from 'ai';
-import { getModel, getMaxTokens } from "../config";
 import { TokenTracker } from "../utils/token-tracker";
-import { SearchAction, KeywordsResponse } from '../types';
-import { handleGenerateObjectError } from '../utils/error-handling';
+import { SearchAction } from '../types';
+import {ObjectGeneratorSafe} from "../utils/safe-generator";
 
-const model = getModel('queryRewriter');
 
 const responseSchema = z.object({
   think: z.string().describe('Strategic reasoning about query complexity and search approach'),
@@ -93,30 +90,23 @@ Intention: ${action.think}
 `;
 }
 
+const TOOL_NAME = 'queryRewriter';
+
 export async function rewriteQuery(action: SearchAction, tracker?: TokenTracker): Promise<{ queries: string[] }> {
   try {
+    const generator = new ObjectGeneratorSafe(tracker);
     const prompt = getPrompt(action);
-    let object;
-    let usage;
-    try {
-      const result = await generateObject({
-        model,
-        schema: responseSchema,
-        prompt,
-        maxTokens: getMaxTokens('queryRewriter')
-      });
-      object = result.object;
-      usage = result.usage;
-    } catch (error) {
-      const result = await handleGenerateObjectError<KeywordsResponse>(error);
-      object = result.object;
-      usage = result.usage;
-    }
-    console.log('Query rewriter:', object.queries);
-    (tracker || new TokenTracker()).trackUsage('query-rewriter', usage);
-    return { queries: object.queries };
+
+    const result = await generator.generateObject({
+      model: TOOL_NAME,
+      schema: responseSchema,
+      prompt,
+    });
+
+    console.log(TOOL_NAME, result.object.queries);
+    return { queries: result.object.queries };
   } catch (error) {
-    console.error('Error in query rewriting:', error);
+    console.error(`Error in ${TOOL_NAME}`, error);
     throw error;
   }
 }

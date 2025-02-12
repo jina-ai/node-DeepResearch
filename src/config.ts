@@ -111,7 +111,7 @@ export function getModel(toolName: ToolName) {
 
   if (LLM_PROVIDER === 'vertex') {
     const createVertex = require('@ai-sdk/google-vertex').createVertex;
-    if (toolName === 'search-grounding') {
+    if (toolName === 'searchGrounding') {
       return createVertex({ project: process.env.GCLOUD_PROJECT, ...providerConfig?.clientConfig })(config.model, { useSearchGrounding: true });
     }
     return createVertex({ project: process.env.GCLOUD_PROJECT, ...providerConfig?.clientConfig })(config.model);
@@ -121,7 +121,7 @@ export function getModel(toolName: ToolName) {
     throw new Error('GEMINI_API_KEY not found');
   }
 
-  if (toolName === 'search-grounding') {
+  if (toolName === 'searchGrounding') {
     return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(config.model, { useSearchGrounding: true });
   }
   return createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })(config.model);

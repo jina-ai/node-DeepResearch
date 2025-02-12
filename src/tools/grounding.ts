@@ -3,7 +3,7 @@ import {getModel} from "../config";
 import { GoogleGenerativeAIProviderMetadata } from '@ai-sdk/google';
 import {TokenTracker} from "../utils/token-tracker";
 
-const model = getModel('search-grounding')
+const model = getModel('searchGrounding')
 
 export async function grounding(query: string, tracker?: TokenTracker): Promise<string> {
   try {
