@@ -38,13 +38,14 @@
         "maxTokens": 8000
       },
       "tools": {
-        "search-grounding": { "temperature": 0 },
+        "searchGrounding": { "temperature": 0 },
         "dedup": { "temperature": 0.1 },
         "evaluator": {},
         "errorAnalyzer": {},
         "queryRewriter": { "temperature": 0.1 },
         "agent": { "temperature": 0.7 },
-        "agentBeastMode": { "temperature": 0.7 }
+        "agentBeastMode": { "temperature": 0.7 },
+        "fallback": { "temperature": 0 }
       }
     },
     "openai": {
@@ -54,13 +55,14 @@
         "maxTokens": 8000
       },
       "tools": {
-        "search-grounding": { "temperature": 0 },
+        "searchGrounding": { "temperature": 0 },
         "dedup": { "temperature": 0.1 },
         "evaluator": {},
         "errorAnalyzer": {},
         "queryRewriter": { "temperature": 0.1 },
         "agent": { "temperature": 0.7 },
-        "agentBeastMode": { "temperature": 0.7 }
+        "agentBeastMode": { "temperature": 0.7 },
+        "fallback": { "temperature": 0 }
       }
     }
   }
