@@ -11,7 +11,7 @@ import {evaluateAnswer, evaluateQuestion} from "./tools/evaluator";
 import {analyzeSteps} from "./tools/error-analyzer";
 import {TokenTracker} from "./utils/token-tracker";
 import {ActionTracker} from "./utils/action-tracker";
-import {StepAction, AnswerAction, KnowledgeItem} from "./types";
+import {StepAction, AnswerAction, KnowledgeItem, EvaluationCriteria} from "./types";
 import {TrackerContext} from "./types";
 import {search} from "./tools/jina-search";
 // import {grounding} from "./tools/grounding";
@@ -24,7 +24,7 @@ async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boolean, allowSearch: boolean) {
+function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boolean, allowSearch: boolean, languageStyle: string = 'same language as the question') {
   const actions: string[] = [];
   const properties: Record<string, z.ZodTypeAny> = {
     action: z.enum(['placeholder']), // Will update later with actual actions
@@ -40,7 +40,7 @@ function getSchema(allowReflect: boolean, allowRead: boolean, allowAnswer: boole
   if (allowAnswer) {
     actions.push("answer");
     properties.answer = z.string()
-      .describe("Required when action='answer'. Must be the final answer in natural language").optional();
+      .describe(`Required when action='answer'. Must in ${languageStyle}`).optional();
     properties.references = z.array(
       z.object({
         exactQuote: z.string().describe("Exact relevant quote from the document"),
@@ -85,7 +85,8 @@ function getPrompt(
   badContext?: { question: string, answer: string, evaluation: string, recap: string; blame: string; improvement: string; }[],
   knowledge?: KnowledgeItem[],
   allURLs?: Record<string, string>,
-  beastMode?: boolean
+  beastMode?: boolean,
+  languageStyle?: string
 ): string {
   const sections: string[] = [];
   const actionSections: string[] = [];
@@ -216,11 +217,11 @@ ${allKeywords.join('\n')}
   if (allowAnswer) {
     actionSections.push(`
 <action-answer>
-- If <question> is a simple greeting, chit-chat, or general knowledge, provide the answer directly.
-- Must provide "references" and each must specify "exactQuote" and "url" 
-- In the answer, use markdown footnote syntax like [^1], [^2] to refer to the references
-- Responses must be definitive (no ambiguity, uncertainty, or disclaimers)
-- Provide final response only when 100% certain${allowReflect ? '\n- If doubts remain, use <action-reflect> instead' : ''}
+- If <question> is a simple greeting, chit-chat, or general knowledge, provide the answer directly;
+- Must provide "references" and each must specify "exactQuote" and "url";
+- In the answer, use markdown footnote syntax like [^1], [^2] to refer to the references;
+- Responses must be definitive (no ambiguity, uncertainty, or disclaimers) and in the style of ${languageStyle};
+- Provide final response only when 100% certain;${allowReflect ? '\n- If doubts remain, use <action-reflect> instead' : ''}
 </action-answer>
 `);
   }
@@ -299,8 +300,9 @@ export async function getResponse(question: string,
   let totalStep = 0;
   let badAttempts = 0;
   let schema: ZodObject<any> = getSchema(true, true, true, true)
-  const gaps: string[] = [question.trim()];  // All questions to be answered including the orginal question
-  const allQuestions = [question.trim()];
+  question = question.trim()
+  const gaps: string[] = [question];  // All questions to be answered including the orginal question
+  const allQuestions = [question];
   const allKeywords = [];
   const allKnowledge: KnowledgeItem[] = [];  // knowledge are intermedidate questions that are answered
   // iterate over historyMessages
@@ -329,7 +331,7 @@ export async function getResponse(question: string,
 
   const allURLs: Record<string, string> = {};
   const visitedURLs: string[] = [];
-  const evaluationMetrics: Record<string, any[]> = {};
+  const evaluationMetrics: Record<string, EvaluationCriteria> = {};
   while (context.tokenTracker.getTotalUsage().totalTokens < tokenBudget && badAttempts <= maxBadAttempts) {
     // add 1s delay to avoid rate limiting
     await sleep(STEP_SLEEP);
@@ -339,7 +341,7 @@ export async function getResponse(question: string,
     console.log(`Step ${totalStep} / Budget used ${budgetPercentage}%`);
     console.log('Gaps:', gaps);
     allowReflect = allowReflect && (gaps.length <= 1);
-    const currentQuestion = gaps.length > 0 ? gaps.shift()! : question.trim();
+    const currentQuestion = gaps.length > 0 ? gaps.shift()! : question
     if (!evaluationMetrics[currentQuestion]) {
       evaluationMetrics[currentQuestion] = await evaluateQuestion(currentQuestion, context.tokenTracker)
     }
@@ -361,9 +363,11 @@ export async function getResponse(question: string,
       badContext,
       allKnowledge,
       allURLs,
-      false
+      false,
+      evaluationMetrics[currentQuestion].languageStyle
     );
-    schema = getSchema(allowReflect, allowRead, allowAnswer, allowSearch)
+    schema = getSchema(allowReflect, allowRead, allowAnswer, allowSearch,
+      evaluationMetrics[currentQuestion].languageStyle)
     const generator = new ObjectGeneratorSafe(context.tokenTracker);
     const result = await generator.generateObject({
       model: 'agent',
@@ -401,7 +405,7 @@ export async function getResponse(question: string,
       const {response: evaluation} = await evaluateAnswer(currentQuestion, thisStep,
         evaluationMetrics[currentQuestion], context.tokenTracker);
 
-      if (currentQuestion.trim() === question.trim()) {
+      if (currentQuestion.trim() === question) {
         if (evaluation.pass) {
           diaryContext.push(`
 At step ${step}, you took **answer** action and finally found the answer to the original question:
@@ -458,7 +462,7 @@ ${evaluation.think}
               // reranker? maybe
               gaps.push(...errorAnalysis.questionsToAnswer.slice(0, 2));
               allQuestions.push(...errorAnalysis.questionsToAnswer.slice(0, 2));
-              gaps.push(question.trim());  // always keep the original question in the gaps
+              gaps.push(question);  // always keep the original question in the gaps
             }
 
             badAttempts++;
@@ -505,7 +509,7 @@ You will now figure out the answers to these sub-questions and see if they can h
 `);
         gaps.push(...newGapQuestions.slice(0, 2));
         allQuestions.push(...newGapQuestions.slice(0, 2));
-        gaps.push(question.trim());  // always keep the original question in the gaps
+        gaps.push(question);  // always keep the original question in the gaps
       } else {
         diaryContext.push(`
 At step ${step}, you took **reflect** and think about the knowledge gaps. You tried to break down the question "${currentQuestion}" into gap-questions like this: ${oldQuestions.join(', ')} 
@@ -697,10 +701,12 @@ You decided to think out of the box or cut from a completely different angle.`);
       badContext,
       allKnowledge,
       allURLs,
-      true
+      true,
+      evaluationMetrics[question]?.languageStyle || 'same language as the question'
     );
 
-    schema = getSchema(false, false, true, false);
+    schema = getSchema(false, false, true, false,
+      evaluationMetrics[question]?.languageStyle || 'same language as the question');
     const generator = new ObjectGeneratorSafe(context.tokenTracker);
     const result = await generator.generateObject({
       model: 'agentBeastMode',
@@ -721,7 +727,15 @@ You decided to think out of the box or cut from a completely different angle.`);
 async function storeContext(prompt: string, schema: any, memory: any[][], step: number) {
   if ((process as any).asyncLocalContext?.available?.()) {
     const [context, keywords, questions, knowledge] = memory;
-    (process as any).asyncLocalContext.ctx.promptContext = { prompt, schema, context, keywords, questions, knowledge, step };
+    (process as any).asyncLocalContext.ctx.promptContext = {
+      prompt,
+      schema,
+      context,
+      keywords,
+      questions,
+      knowledge,
+      step
+    };
     return;
   }
 

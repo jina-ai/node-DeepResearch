@@ -1,12 +1,11 @@
 import {z} from 'zod';
 import {GenerateObjectResult} from 'ai';
 import {TokenTracker} from "../utils/token-tracker";
-import {AnswerAction, EvaluationResponse} from '../types';
+import {AnswerAction, EvaluationCriteria, EvaluationResponse, EvaluationType} from '../types';
 import {readUrl, removeAllLineBreaks} from "./read";
 import {ObjectGeneratorSafe} from "../utils/safe-generator";
 
 
-type EvaluationType = 'definitive' | 'freshness' | 'plurality' | 'attribution';
 
 const baseSchema = {
   pass: z.boolean().describe('Whether the answer passes the evaluation criteria defined by the evaluator'),
@@ -301,7 +300,8 @@ Answer: ${JSON.stringify(answer)}`;
 const questionEvaluationSchema = z.object({
   needsFreshness: z.boolean().describe('Whether the question requires freshness check'),
   needsPlurality: z.boolean().describe('Whether the question requires plurality check'),
-  reasoning: z.string().describe('Explanation of why these checks are needed or not needed')
+  reasoning: z.string().describe('Explanation of why these checks are needed or not needed'),
+  languageStyle: z.string().describe('The language being used and the overall vibe/mood of the question'),
 });
 
 function getQuestionEvaluationPrompt(question: string): string {
@@ -310,6 +310,7 @@ function getQuestionEvaluationPrompt(question: string): string {
 <evaluation_types>
 1. freshness - Checks if the question is time-sensitive or requires very recent information
 2. plurality - Checks if the question asks for multiple items or a specific count or enumeration
+3. language style - Identifies both the language used and the overall vibe of the question
 </evaluation_types>
 
 <rules>
@@ -326,42 +327,54 @@ If question is a simple greeting, chit-chat, or general knowledge, provide the a
    - Check for: numbers ("5 examples"), plural nouns, list requests
    - Look for: "all", "list", "enumerate", "examples", plural forms
    - Required when question implies completeness ("all the reasons", "every factor")
+
+3. Language Style Analysis:
+  Combine both language and emotional vibe in a descriptive phrase, considering:
+  - Language: The primary language or mix of languages used
+  - Emotional tone: panic, excitement, frustration, curiosity, etc.
+  - Formality level: academic, casual, professional, etc.
+  - Domain context: technical, academic, social, etc.
 </rules>
 
 <examples>
-Question: "Hello, how are you?"
+Question: "fam PLEASE help me calculate the eigenvalues of this 4x4 matrix ASAP!! [matrix details] got an exam tmrw 😭"
 Evaluation: {
-  "needsFreshness": false,
-  "needsPlurality": false,
-  "reasoning": "Simple greeting, no additional checks needed."
+    "needsFreshness": false,
+    "needsPlurality": true,
+    "reasoning": "Multiple eigenvalues needed but no time-sensitive information required",
+    "languageStyle": "panicked student English with math jargon"
 }
 
-Question: "What is the current CEO of OpenAI?"
+Question: "Can someone explain how tf did Ferrari mess up their pit stop strategy AGAIN?! 🤦‍♂️ #MonacoGP"
 Evaluation: {
-  "needsFreshness": true,
-  "needsPlurality": false,
-  "reasoning": "Question asks about current leadership position which requires freshness check. No plurality check needed as it asks for a single position."
+    "needsFreshness": true,
+    "needsPlurality": true,
+    "reasoning": "Refers to recent race event and requires analysis of multiple strategic decisions",
+    "languageStyle": "frustrated fan English with F1 terminology"
 }
 
-Question: "List all the AI companies in Berlin"
+Question: "肖老师您好，请您介绍一下最近量子计算领域的三个重大突破，特别是它们在密码学领域的应用价值吗？🤔"
 Evaluation: {
-  "needsFreshness": false,
-  "needsPlurality": true,
-  "reasoning": "Question asks for a comprehensive list ('all') which requires plurality check. No freshness check needed as it's not time-sensitive."
+    "needsFreshness": true,
+    "needsPlurality": true,
+    "reasoning": "Asks for recent breakthroughs (freshness) and specifically requests three examples (plurality)",
+    "languageStyle": "formal technical Chinese with academic undertones"
 }
 
-Question: "What are the top 5 latest AI models released by OpenAI?"
+Question: "Bruder krass, kannst du mir erklären warum meine neural network training loss komplett durchdreht? Hab schon alles probiert 😤"
 Evaluation: {
-  "needsFreshness": true,
-  "needsPlurality": true,
-  "reasoning": "Question requires freshness check for 'latest' releases and plurality check for 'top 5' items."
+    "needsFreshness": false,
+    "needsPlurality": true,
+    "reasoning": "Requires comprehensive debugging analysis of multiple potential issues",
+    "languageStyle": "frustrated German-English tech slang"
 }
 
-Question: "Who created Python?"
+Question: "Does anyone have insights into the sociopolitical implications of GPT-4's emergence in the Global South, particularly regarding indigenous knowledge systems and linguistic diversity? Looking for a nuanced analysis."
 Evaluation: {
-  "needsFreshness": false,
-  "needsPlurality": false,
-  "reasoning": "Simple factual question requiring only definitiveness check. No time sensitivity or multiple items needed."
+    "needsFreshness": true,
+    "needsPlurality": true,
+    "reasoning": "Requires analysis of current impacts (freshness) across multiple dimensions: sociopolitical, cultural, and linguistic (plurality)",
+    "languageStyle": "formal academic English with sociological terminology"
 }
 </examples>
 
@@ -374,7 +387,7 @@ const TOOL_NAME = 'evaluator';
 export async function evaluateQuestion(
   question: string,
   tracker?: TokenTracker
-): Promise<EvaluationType[]> {
+): Promise<EvaluationCriteria> {
   try {
     const generator = new ObjectGeneratorSafe(tracker);
 
@@ -394,12 +407,12 @@ export async function evaluateQuestion(
     console.log('Question Metrics:', types);
 
     // Always evaluate definitive first, then freshness (if needed), then plurality (if needed)
-    return types;
+    return {types, languageStyle: result.object.languageStyle};
 
   } catch (error) {
     console.error('Error in question evaluation:', error);
     // Default to all evaluation types in case of error
-    return ['definitive', 'freshness', 'plurality'];
+    return {types: ['definitive', 'freshness', 'plurality'], languageStyle: 'plain English'};
   }
 }
 
@@ -430,17 +443,17 @@ async function performEvaluation<T>(
 export async function evaluateAnswer(
   question: string,
   action: AnswerAction,
-  evaluationOrder: EvaluationType[] = ['definitive', 'freshness', 'plurality'],
+  evaluationCri: EvaluationCriteria,
   tracker?: TokenTracker
 ): Promise<{ response: EvaluationResponse }> {
   let result;
 
   // Only add attribution if we have valid references
   if (action.references && action.references.length > 0) {
-    evaluationOrder = ['attribution', ...evaluationOrder];
+    evaluationCri.types = ['attribution', ...evaluationCri.types];
   }
 
-  for (const evaluationType of evaluationOrder) {
+  for (const evaluationType of evaluationCri.types) {
     switch (evaluationType) {
       case 'attribution': {
         // Safely handle references and ensure we have content

@@ -45,6 +45,11 @@ export type VisitAction = BaseAction & {
 
 export type StepAction = SearchAction | AnswerAction | ReflectAction | VisitAction;
 
+export type EvaluationType = 'definitive' | 'freshness' | 'plurality' | 'attribution';
+export type EvaluationCriteria = {
+  types: EvaluationType[];
+  languageStyle: string;
+};
 
 // Following Vercel AI SDK's token counting interface
 export interface TokenUsage {
