@@ -11,7 +11,7 @@ import {evaluateAnswer, evaluateQuestion} from "./tools/evaluator";
 import {analyzeSteps} from "./tools/error-analyzer";
 import {TokenTracker} from "./utils/token-tracker";
 import {ActionTracker} from "./utils/action-tracker";
-import {StepAction, AnswerAction} from "./types";
+import {StepAction, AnswerAction, KnowledgeItem} from "./types";
 import {TrackerContext} from "./types";
 import {search} from "./tools/jina-search";
 // import {grounding} from "./tools/grounding";
@@ -83,7 +83,7 @@ function getPrompt(
   allowRead: boolean = true,
   allowSearch: boolean = true,
   badContext?: { question: string, answer: string, evaluation: string, recap: string; blame: string; improvement: string; }[],
-  knowledge?: { question: string; answer: string; references?: any[] }[],
+  knowledge?: KnowledgeItem[],
   allURLs?: Record<string, string>,
   beastMode?: boolean
 ): string {
@@ -302,7 +302,7 @@ export async function getResponse(question: string,
   const gaps: string[] = [question.trim()];  // All questions to be answered including the orginal question
   const allQuestions = [question.trim()];
   const allKeywords = [];
-  const allKnowledge = [];  // knowledge are intermedidate questions that are answered
+  const allKnowledge: KnowledgeItem[] = [];  // knowledge are intermedidate questions that are answered
   // iterate over historyMessages
   // if role is user and content is question, add to allQuestions, the next assistant content should be the answer
   // put this pair to the allKnowledge
@@ -310,9 +310,10 @@ export async function getResponse(question: string,
     if (message.role === 'user' && message.content && historyMessages[i + 1]?.role === 'assistant') {
       allQuestions.push(message.content as string)
       allKnowledge.push({
-        question: message.content,
-        answer: historyMessages[i + 1]?.content || '',
-        type: 'history-qa'
+        question: message.content as string,
+        answer: (historyMessages[i + 1]?.content || '') as string,
+        type: 'chat-history',
+        updated: new Date().toISOString()
       });
     }
   })
@@ -442,7 +443,8 @@ ${evaluation.think}
               question: currentQuestion,
               answer: thisStep.answer,
               references: thisStep.references,
-              type: 'qa'
+              type: 'qa',
+              updated: new Date().toISOString()
             });
 
             badContext.push({
@@ -484,7 +486,8 @@ Although you solved a sub-question, you still need to find the answer to the ori
           question: currentQuestion,
           answer: thisStep.answer,
           references: thisStep.references,
-          type: 'qa'
+          type: 'qa',
+          updated: new Date().toISOString()
         });
       }
     } else if (thisStep.action === 'reflect' && thisStep.questionsToAnswer) {
@@ -581,7 +584,8 @@ But then you realized you have asked them before. You decided to to think out of
           question: `What do Internet say about ${thisStep.searchQuery}?`,
           answer: removeHTMLtags(searchResults.map(r => r.results.map(r => r.description).join('; ')).join('; ')),
           // answer: googleGrounded + removeHTMLtags(searchResults.map(r => r.results.map(r => r.description).join('; ')).join('; ')),
-          type: 'side-info'
+          type: 'side-info',
+          updated: new Date().toISOString()
         });
 
         diaryContext.push(`
@@ -631,7 +635,8 @@ You decided to think out of the box or cut from a completely different angle.
                 question: `What is in ${response.data?.url || 'the URL'}?`,
                 answer: removeAllLineBreaks(response.data?.content || 'No content available'),
                 references: [response.data?.url],
-                type: 'url'
+                type: 'url',
+                updated: new Date().toISOString()
               });
               visitedURLs.push(url);
               delete allURLs[url];

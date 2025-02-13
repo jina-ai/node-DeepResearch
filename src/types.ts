@@ -1,5 +1,5 @@
 // Action Types
-import {CoreAssistantMessage, CoreUserMessage, LanguageModelUsage} from "ai";
+import {CoreAssistantMessage, CoreUserMessage, LanguageModelUsage, UserContent} from "ai";
 
 type BaseAction = {
   action: "search" | "answer" | "reflect" | "visit";
@@ -20,6 +20,18 @@ export type AnswerAction = BaseAction & {
   }>;
   isFinal?: boolean;
 };
+
+
+export type KnowledgeItem = {
+  question: string,
+  answer: string,
+  references?: Array<{
+    exactQuote: string;
+    url: string;
+  }> | Array<any>;
+  type: 'qa' | 'side-info' | 'chat-history' | 'url',
+  updated: string,
+}
 
 export type ReflectAction = BaseAction & {
   action: "reflect";
