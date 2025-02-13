@@ -1,5 +1,5 @@
 // Action Types
-import {CoreAssistantMessage, CoreUserMessage, LanguageModelUsage, UserContent} from "ai";
+import {CoreAssistantMessage, CoreUserMessage, LanguageModelUsage} from "ai";
 
 type BaseAction = {
   action: "search" | "answer" | "reflect" | "visit";
