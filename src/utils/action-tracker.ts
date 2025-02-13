@@ -18,13 +18,13 @@ export class ActionTracker extends EventEmitter {
 
   trackAction(newState: Partial<ActionState>) {
     this.state = { ...this.state, ...newState };
-    this.emit('action', this.state);
+    this.emit('action', this.state.thisStep);
   }
 
   trackThink(think: string) {
     // only update the think field of the current state
     this.state = { ...this.state, thisStep: { ...this.state.thisStep, think } };
-    this.emit('action', this.state);
+    this.emit('action', this.state.thisStep);
   }
 
   getState(): ActionState {

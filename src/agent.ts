@@ -324,8 +324,7 @@ export async function getResponse(question: string,
   let allowRead = true;
   let allowReflect = true;
   let prompt = '';
-  let thisStep: StepAction = {action: 'answer', answer: '', references: [], think: ''};
-  let isAnswered = false;
+  let thisStep: StepAction = {action: 'answer', answer: '', references: [], think: '', isFinal: false};
 
   const allURLs: Record<string, string> = {};
   const visitedURLs: string[] = [];
@@ -388,7 +387,7 @@ export async function getResponse(question: string,
     if (thisStep.action === 'answer') {
       if (step === 1) {
         // LLM is so confident and answer immediately, skip all evaluations
-        isAnswered = true;
+        thisStep.isFinal = true;
         break
       }
 
@@ -417,11 +416,11 @@ ${evaluation.think}
 
 Your journey ends here. You have successfully answered the original question. Congratulations! 🎉
 `);
-          isAnswered = true;
+          thisStep.isFinal = true;
           break
         } else {
           if (badAttempts >= maxBadAttempts) {
-            isAnswered = false;
+            thisStep.isFinal = false;
             break
           } else {
             diaryContext.push(`
@@ -676,9 +675,7 @@ You decided to think out of the box or cut from a completely different angle.`);
   }
 
   await storeContext(prompt, schema, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
-  if (isAnswered) {
-    return {result: thisStep, context};
-  } else {
+  if (!(thisStep as AnswerAction).isFinal) {
     console.log('Enter Beast mode!!!')
     // any answer is better than no answer, humanity last resort
     step++;
@@ -705,14 +702,15 @@ You decided to think out of the box or cut from a completely different angle.`);
       schema,
       prompt,
     });
-
-    await storeContext(prompt, schema, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
-    thisStep = result.object as StepAction;
+    thisStep = result.object as AnswerAction;
+    (thisStep as AnswerAction).isFinal = true;
     context.actionTracker.trackAction({totalStep, thisStep, gaps, badAttempts});
-
-    console.log(thisStep)
-    return {result: thisStep, context};
   }
+  console.log(thisStep)
+
+  await storeContext(prompt, schema, [allContext, allKeywords, allQuestions, allKnowledge], totalStep);
+  return {result: thisStep, context};
+
 }
 
 async function storeContext(prompt: string, schema: any, memory: any[][], step: number) {

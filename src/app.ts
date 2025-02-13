@@ -7,7 +7,7 @@ import {
   ChatCompletionResponse,
   ChatCompletionChunk,
   AnswerAction,
-  Model
+  Model, StepAction
 } from './types';
 import {TokenTracker} from "./utils/token-tracker";
 import {ActionTracker} from "./utils/action-tracker";
@@ -26,25 +26,26 @@ app.get('/health', (req, res) => {
 });
 
 function buildMdFromAnswer(answer: AnswerAction) {
-  let refStr = '';
-  if (answer.references?.length > 0) {
-    refStr = `
+  if (!answer.references?.length || !answer.references.some(ref => ref.url.startsWith('http'))) {
+    return answer.answer;
+  }
+
+  const references = answer.references.map((ref, i) => {
+    const escapedQuote = ref.exactQuote
+      .replace(/([[\]_*`])/g, '\\$1')
+      .replace(/\n/g, ' ')
+      .trim();
+
+    return `[^${i + 1}]: [${escapedQuote}](${ref.url})`;
+  }).join('\n\n');
+
+  return `${answer.answer.replace(/\(REF_(\d+)\)/g, (_, num) => `[^${num}]`)}
+
 <references>
 
-${answer.references.map((ref, i) => {
-  // Escape special markdown characters in the quote
-  const escapedQuote = ref.exactQuote
-    .replace(/([[\]_*`])/g, '\\$1')  // Escape markdown syntax chars
-    .replace(/\n/g, ' ')             // Replace line breaks with spaces
-    .trim();                         // Remove excess whitespace
-  
-  return `[^${i + 1}]: [${escapedQuote}](${ref.url})\n\n`;
-}).join()}
+${references}
 
-</references>
-`.trim();
-  }
-  return `${answer.answer.replace(/\(REF_(\d+)\)/g, (_, num) => `[^${num}]`)}\n\n${refStr}`;
+</references>`;
 }
 
 async function* streamTextNaturally(text: string, streamingState: StreamingState) {
@@ -465,16 +466,16 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     res.write(`data: ${JSON.stringify(initialChunk)}\n\n`);
 
     // Set up progress listener with cleanup
-    const actionListener = async (action: any) => {
-      if (action.thisStep.think) {
-        // Create a promise that resolves when this content is done streaming
+    const actionListener = async (step: StepAction) => {
+      // Add content to queue for both thinking steps and final answer
+      if (step.think) {
+        const content = step.think;
         await new Promise<void>(resolve => {
           streamingState.queue.push({
-            content: action.thisStep.think,
+            content,
             resolve
           });
-
-          // Start processing queue if not already processing
+          // Single call to process queue is sufficient
           processQueue(streamingState, res, requestId, created, body.model);
         });
       }
@@ -491,13 +492,13 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   }
 
   try {
-    const {result} = await getResponse(lastMessage.content as string, tokenBudget, maxBadAttempts, context, body.messages)
+    const {result: finalStep} = await getResponse(lastMessage.content as string, tokenBudget, maxBadAttempts, context, body.messages)
 
     const usage = context.tokenTracker.getTotalUsageSnakeCase();
     if (body.stream) {
       // Complete any ongoing streaming before sending final answer
       await completeCurrentStreaming(streamingState, res, requestId, created, body.model);
-
+      const finalAnswer = buildMdFromAnswer(finalStep as AnswerAction);
       // Send closing think tag
       const closeThinkChunk: ChatCompletionChunk = {
         id: requestId,
@@ -507,15 +508,15 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         system_fingerprint: 'fp_' + requestId,
         choices: [{
           index: 0,
-          delta: {content: `</think>\n\n`},
+          delta: {content: `</think>\n\n${finalAnswer}`},
           logprobs: null,
           finish_reason: null
         }]
       };
       res.write(`data: ${JSON.stringify(closeThinkChunk)}\n\n`);
 
-      // Send final answer as separate chunk
-      const answerChunk: ChatCompletionChunk = {
+      // After the content is fully streamed, send the final chunk with finish_reason and usage
+      const finalChunk: ChatCompletionChunk = {
         id: requestId,
         object: 'chat.completion.chunk',
         created,
@@ -523,13 +524,13 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         system_fingerprint: 'fp_' + requestId,
         choices: [{
           index: 0,
-          delta: {content: result.action === 'answer' ? buildMdFromAnswer(result) : result.think},
+          delta: {content: ''},
           logprobs: null,
           finish_reason: 'stop'
         }],
         usage
       };
-      res.write(`data: ${JSON.stringify(answerChunk)}\n\n`);
+      res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
       res.end();
     } else {
 
@@ -543,7 +544,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
           index: 0,
           message: {
             role: 'assistant',
-            content: result.action === 'answer' ? buildMdFromAnswer(result) : result.think
+            content: finalStep.action === 'answer' ? buildMdFromAnswer(finalStep) : finalStep.think
           },
           logprobs: null,
           finish_reason: 'stop'

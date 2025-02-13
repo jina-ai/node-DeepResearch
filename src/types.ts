@@ -18,6 +18,7 @@ export type AnswerAction = BaseAction & {
     exactQuote: string;
     url: string;
   }>;
+  isFinal?: boolean;
 };
 
 export type ReflectAction = BaseAction & {
