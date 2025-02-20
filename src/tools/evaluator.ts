@@ -21,7 +21,6 @@ const freshnessSchema = z.object({
   ...baseSchema,
   type: z.literal('freshness'),
   freshness_analysis: z.object({
-    likely_outdated: z.boolean().describe('Whether the answer content is likely outdated based on dates and current time'),
     dates_mentioned: z.array(z.string()).describe('All dates mentioned in the answer'),
     current_time: z.string().describe('Current system time when evaluation was performed'),
     max_age_days: z.number().optional().describe('Maximum allowed age in days before content is considered outdated')
@@ -32,8 +31,6 @@ const pluralitySchema = z.object({
   ...baseSchema,
   type: z.literal('plurality'),
   plurality_analysis: z.object({
-    expects_multiple: z.boolean().describe('Whether the question asks for multiple items'),
-    provides_multiple: z.boolean().describe('Whether the answer provides multiple items'),
     count_expected: z.number().optional().describe('Number of items expected if specified in question'),
     count_provided: z.number().describe('Number of items provided in answer')
   })
@@ -162,68 +159,66 @@ Answer: ${JSON.stringify(answer)}`;
 }
 
 function getFreshnessPrompt(question: string, answer: string, currentTime: string): string {
-  return `You are an evaluator that analyzes if answer content is likely outdated based on mentioned dates and current time.
+  return `You are an evaluator that analyzes if answer content is likely outdated based on mentioned dates (or implied datetime) and current system time: ${currentTime}
 
 <rules>
-1. Date Analysis:
-   - Extract all dates mentioned in the answer
-   - Compare against current system time: ${currentTime}
-   - Consider content outdated if:
-     * It refers to a "latest" or "current" state from more than 30 days ago
-     * It mentions specific dates/events that have been superseded
-     * It contains time-sensitive information (e.g., "current CEO", "latest version") from more than 60 days ago
-   - For product versions, releases, or announcements, max age is 30 days
-   - For company positions, leadership, or general facts, max age is 90 days
+Question-Answer Freshness Checker Guidelines
 
-2. Context Hints:
-   - Words indicating recency: "latest", "current", "newest", "just released", "recently"
-   - Time-sensitive terms: "CEO", "price", "version", "release"
-   - Future dates should be ignored in outdated calculation
+| QA Type                  | Max Age (Days) | Notes                                                                 |
+|--------------------------|--------------|-----------------------------------------------------------------------|
+| Breaking News            | 1           | Immediate coverage of major events                                     |
+| News/Current Events      | 1           | Time-sensitive news, politics, or global events                        |
+| Weather Forecasts        | 1           | Accuracy drops significantly after 24 hours                            |
+| Sports Scores/Events     | 1           | Live updates required for ongoing matches                              |
+| Financial Data (Real-time)| 0.1        | Stock prices, exchange rates, crypto (real-time preferred)             |
+| Security Advisories      | 1           | Critical security updates and patches                                  |
+| Social Media Trends      | 1           | Viral content, hashtags, memes                                         |
+| Stock Market Updates     | 1           | Daily market movements and trading information                         |
+| Current Events           | 3           | Developing stories with slightly longer relevance                      |
+| Cybersecurity Threats    | 7           | Rapidly evolving vulnerabilities/patches                               |
+| Tech News                | 7           | Technology industry updates and announcements                          |
+| Political Developments   | 7           | Legislative changes, political statements                              |
+| Political Elections      | 7           | Poll results, candidate updates                                        |
+| Sales/Promotions         | 7           | Limited-time offers and marketing campaigns                            |
+| Travel Restrictions      | 7           | Visa rules, pandemic-related policies                                  |
+| Entertainment News       | 14          | Celebrity updates, industry announcements                              |
+| Product Launches         | 14          | New product announcements and releases                                 |
+| Market Analysis          | 14          | Market trends and competitive landscape                                |
+| Competitive Intelligence | 21          | Analysis of competitor activities and market position                  |
+| Product Recalls          | 30          | Safety alerts or recalls from manufacturers                            |
+| Industry Reports         | 30          | Sector-specific analysis and forecasting                               |
+| Software Version Info    | 30          | Updates, patches, and compatibility information                        |
+| Legal/Regulatory Updates | 30          | Laws, compliance rules (jurisdiction-dependent)                        |
+| Economic Forecasts       | 30          | Macroeconomic predictions and analysis                                 |
+| Consumer Trends          | 45          | Shifting consumer preferences and behaviors                            |
+| Scientific Discoveries   | 60          | New research findings and breakthroughs                                |
+| Healthcare Guidelines    | 60          | Medical recommendations and best practices                             |
+| Environmental Reports    | 60          | Climate and environmental status updates                               |
+| Medical Guidelines       | 90          | Recommendations from health authorities (e.g., CDC, WHO)               |
+| Best Practices           | 90          | Industry standards and recommended procedures                          |
+| Academic Research        | 90          | Scholarly publications and findings                                    |
+| API Documentation        | 90          | Technical specifications and implementation guides                     |
+| Tech Product Info        | 180         | Product specs, release dates, or pricing                               |
+| Tutorial Content         | 180         | How-to guides and instructional materials                              |
+| Statistical Data         | 180         | Demographic and statistical information                                |
+| Reference Material       | 180         | General reference information and resources                            |
+| Company Info             | 365         | Earnings reports, leadership changes, mergers                          |
+| Scientific Research      | 365         | Peer-reviewed studies (field-dependent, e.g., COVID-19 = shorter)      |
+| Historical Content       | 365         | Events and information from the past year                              |
+| Educational Content      | 1095        | Curriculum updates (e.g., math vs. AI courses)                         |
+| Cultural Trends          | 730         | Shifts in language, fashion, or social norms                           |
+| Entertainment Releases   | 730         | Movie/TV show schedules, media catalogs                                |
+| Historical Facts         | ∞           | Non-changing historical data (no expiration)                           |
+| Factual Knowledge        | ∞           | Static facts (e.g., historical events, geography, physical constants)   |
+
+### Implementation Notes:
+1. **Contextual Adjustment**: Freshness requirements may change during crises or rapid developments in specific domains.
+2. **Tiered Approach**: Consider implementing urgency levels (critical, important, standard) alongside age thresholds.
+3. **User Preferences**: Allow customization of thresholds for specific query types or user needs.
+4. **Source Reliability**: Pair freshness metrics with source credibility scores for better quality assessment.
+5. **Domain Specificity**: Some specialized fields (medical research during pandemics, financial data during market volatility) may require dynamically adjusted thresholds.
+6. **Geographic Relevance**: Regional considerations may alter freshness requirements for local regulations or events.
 </rules>
-
-<examples>
-Question: "What was Jina AI's closing stock price yesterday?"
-Answer: "Jina AI's stock closed at $45.30 per share at yesterday's market close."
-Current Time: "2024-03-07T14:30:00Z"
-Evaluation: {
-  "pass": true,
-  "think": "The question specifically asks for yesterday's closing price, and the answer provides exactly that information. Since it's asking for a historical data point rather than current price, yesterday's closing price is the correct timeframe.",
-  "freshness_analysis": {
-    "likely_outdated": false,
-    "dates_mentioned": ["2024-03-06"],
-    "current_time": "2024-03-07T14:30:00Z",
-    "max_age_days": 1
-  }
-}
-
-Question: "What is Jina AI's latest embedding model?"
-Answer: "The latest embedding model from Jina AI is jina-embeddings-v2, released on March 15, 2024."
-Current Time: "2024-10-06T00:00:00Z"
-Evaluation: {
-  "pass": false,
-  "think": "The answer refers to a 'latest' model release from over 6 months ago, which is likely outdated for product version information",
-  "freshness_analysis": {
-    "likely_outdated": true,
-    "dates_mentioned": ["2024-03-15"],
-    "current_time": "2024-10-06T00:00:00Z",
-    "max_age_days": 30
-  }
-}
-
-Question: "Who is OpenAI's CEO?"
-Answer: "Sam Altman is the CEO of OpenAI as of December 2023."
-Current Time: "2024-02-06T00:00:00Z"
-Evaluation: {
-  "pass": true,
-  "think": "The answer is about company leadership and is within the 60-day threshold for such information",
-  "freshness_analysis": {
-    "likely_outdated": false,
-    "dates_mentioned": ["2023-12"],
-    "current_time": "2024-02-06T00:00:00Z",
-    "max_age_days": 90
-  }
-}
-</examples>
 
 Now evaluate this pair:
 Question: ${JSON.stringify(question)}
@@ -234,76 +229,86 @@ function getPluralityPrompt(question: string, answer: string): string {
   return `You are an evaluator that analyzes if answers provide the appropriate number of items requested in the question.
 
 <rules>
-1. Question Analysis:
-   - Check if question asks for multiple items using indicators like:
-     * Plural nouns: "companies", "people", "names"
-     * Quantifiers: "all", "many", "several", "various", "multiple"
-     * List requests: "list", "enumerate", "name all", "give me all"
-     * Numbers: "5 examples", "top 10"
-   - Otherwise skip the analysis and return pass to true
+Question Type: Explicit Count
+Expected Items: Exact match to number specified
+Evaluation Rules: 1. Must provide exactly the requested number 2. Items must be distinct/non-redundant 3. Each item must be relevant to query
+Examples: Q: "List 5 ways to improve productivity" A: Must contain exactly 5 distinct methods
 
-2. Answer Analysis:
-   - Count distinct items provided in the answer
-   - Check if answer uses limiting words like "only", "just", "single"
-   - Identify if answer acknowledges there are more items but only provides some
+Question Type: Numeric Range
+Expected Items: Any number within specified range
+Evaluation Rules: 1. Count must fall within given range 2. Items must be distinct/non-redundant 3. For "at least N", minimum threshold must be met
+Examples: Q: "Give me 3-5 investment strategies" A: Must contain 3, 4, or 5 strategies
 
-3. Definitiveness Rules:
-   - If question asks for multiple items but answer provides only one → NOT definitive
-   - If question asks for specific number (e.g., "top 5") but answer provides fewer → NOT definitive
-   - If answer clearly states it's providing a partial list → NOT definitive
-   - If question asks for "all" or "every" but answer seems incomplete → NOT definitive
+Question Type: Implied Multiple
+Expected Items: ≥ 2
+Evaluation Rules: 1. Must provide more than one item 2. Items should be balanced in detail/importance 3. Typically requires 2-4 items unless context suggests more
+Examples: Q: "What are some benefits of exercise?" A: Should provide at least 2 distinct benefits
+
+Question Type: "Few"
+Expected Items: 2-4
+Evaluation Rules: 1. Must provide between 2-4 items 2. Items should be substantive 3. Quality over quantity
+Examples: Q: "Suggest a few books on leadership" A: Should provide 2-4 book recommendations
+
+Question Type: "Several"
+Expected Items: 3-7
+Evaluation Rules: 1. Must provide between 3-7 items 2. Should be comprehensive but focused 3. Each item deserves brief explanation
+Examples: Q: "What are several causes of climate change?" A: Should provide 3-7 distinct causes
+
+Question Type: "Many"
+Expected Items: 7+
+Evaluation Rules: 1. Must provide 7 or more items 2. May be more concise per item 3. Should demonstrate breadth of possibilities
+Examples: Q: "List many ways to save energy" A: Should provide 7+ energy-saving methods
+
+Question Type: "Most important"
+Expected Items: Top 3-5 by relevance
+Evaluation Rules: 1. Must prioritize by importance 2. Should explain ranking criteria 3. Items must be ordered by significance
+Examples: Q: "What are the most important factors in college selection?" A: Should provide top 3-5 factors in ranked order
+
+Question Type: "Top N"
+Expected Items: Exactly N, ranked
+Evaluation Rules: 1. Must provide exactly N items 2. Must be ordered by importance/relevance 3. Ranking criteria should be clear
+Examples: Q: "What are the top 3 programming languages to learn?" A: Must list exactly 3 languages in ranked order
+
+Question Type: "Pros and Cons"
+Expected Items: ≥ 2 of each
+Evaluation Rules: 1. Must provide balanced perspectives 2. Should have at least 2 items per category 3. Items should address different aspects
+Examples: Q: "What are the pros and cons of remote work?" A: Should provide at least 2 pros and 2 cons
+
+Question Type: "Compare X and Y"
+Expected Items: ≥ 3 comparison points
+Evaluation Rules: 1. Must address at least 3 distinct comparison dimensions 2. Should provide balanced treatment of both subjects 3. Points should cover major differences/similarities
+Examples: Q: "Compare electric and gas cars" A: Should compare at least 3 aspects (cost, environment, performance, etc.)
+
+Question Type: "Steps" or "Process"
+Expected Items: All essential steps
+Evaluation Rules: 1. Must include every critical step 2. Steps must be in logical order 3. No missing dependencies between steps
+Examples: Q: "How do I reset my router?" A: Must include all necessary steps in correct sequence
+
+Question Type: "Examples"
+Expected Items: ≥ 3 unless specified
+Evaluation Rules: 1. Must provide at least 3 examples unless count specified 2. Examples should be diverse/representative 3. Examples must be concrete, not theoretical
+Examples: Q: "Give examples of renewable energy" A: Should provide at least 3 distinct examples
+
+Question Type: "Comprehensive"
+Expected Items: 10+
+Evaluation Rules: 1. Must provide extensive coverage (10+ items) 2. Should cover major categories and subcategories 3. Should demonstrate domain expertise
+Examples: Q: "Give a comprehensive list of investing options" A: Should provide 10+ investment types with categories
+
+Question Type: "Brief" or "Quick"
+Expected Items: 1-3
+Evaluation Rules: 1. Must be concise (1-3 items) 2. Focus on most important/relevant 3. Each item should be described efficiently
+Examples: Q: "Give me a brief overview of quantum computing" A: Should cover 1-3 main concepts concisely
+
+Question Type: "Complete"
+Expected Items: All possible items
+Evaluation Rules: 1. Must be exhaustive within reasonable scope 2. No major omissions within category 3. May require categorization for clarity
+Examples: Q: "List all planets in our solar system" A: Must include all 8 planets (or 9 if including Pluto)
+
+Question Type: Unspecified Analysis
+Expected Items: 3-5 key points
+Evaluation Rules: 1. Default to 3-5 main points for undefined requests 2. Should cover primary aspects 3. Balance breadth and depth
+Examples: Q: "Analyze the housing market" A: Should address 3-5 key factors affecting housing
 </rules>
-
-<examples>
-Question: "Who works in Jina AI's sales team?"
-Answer: "John Smith is a sales representative at Jina AI."
-Evaluation: {
-  "pass": true,
-  "think": "The question doesn't specifically ask for multiple team members, so a single name can be considered a definitive answer.",
-  "plurality_analysis": {
-    "expects_multiple": false,
-    "provides_multiple": false,
-    "count_provided": 1
-  }
-}
-
-Question: "List all the salespeople who work at Jina AI"
-Answer: "John Smith is a sales representative at Jina AI."
-Evaluation: {
-  "pass": false,
-  "think": "The question asks for 'all salespeople' but the answer only provides one name without indicating if this is the complete list.",
-  "plurality_analysis": {
-    "expects_multiple": true,
-    "provides_multiple": false,
-    "count_provided": 1
-  }
-}
-
-Question: "Name the top 3 products sold by Jina AI"
-Answer: "Jina AI's product lineup includes DocArray and Jina."
-Evaluation: {
-  "pass": false,
-  "think": "The question asks for top 3 products but only 2 are provided.",
-  "plurality_analysis": {
-    "expects_multiple": true,
-    "provides_multiple": true,
-    "count_expected": 3,
-    "count_provided": 2
-  }
-}
-
-Question: "List as many AI companies in Berlin as you can find"
-Answer: "Here are several AI companies in Berlin: Ada Health, Merantix, DeepL, Understand.ai, and Zeitgold. There are many more AI companies in Berlin, but these are some notable examples."
-Evaluation: {
-  "pass": false,
-  "think": "While the answer provides multiple companies, it explicitly states it's an incomplete list when the question asks to list as many as possible.",
-  "plurality_analysis": {
-    "expects_multiple": true,
-    "provides_multiple": true,
-    "count_provided": 5
-  }
-}
-</examples>
 
 Now evaluate this pair:
 Question: ${JSON.stringify(question)}

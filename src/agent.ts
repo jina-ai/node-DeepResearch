@@ -575,7 +575,7 @@ But then you realized you have asked them before. You decided to to think out of
       let {queries: keywordsQueries} = await rewriteQuery(thisStep, context.tokenTracker);
 
       // add the original query before rewrite to the keywordsQueries
-      keywordsQueries.push(thisStep.searchQuery)
+      keywordsQueries.push(question)
 
       const oldKeywords = keywordsQueries;
       // avoid exisitng searched queries

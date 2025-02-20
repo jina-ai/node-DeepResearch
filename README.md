@@ -54,6 +54,10 @@ export JINA_API_KEY=jina_...  # free jina api key, get from https://jina.ai/read
 npm run dev $QUERY
 ```
 
+### Official Site
+
+You can try it on [our official site](https://search.jina.ai).
+
 ### Official API
 
 You can also use our official DeepSearch API, hosted and optimized by Jina AI:
