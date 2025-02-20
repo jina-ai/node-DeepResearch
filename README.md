@@ -1,6 +1,6 @@
 # DeepResearch
 
-[UI](https://search.jina.ai/) | [UI Code](https://github.com/jina-ai/deepsearch-ui) | [API](https://jina.ai/deepsearch) | [Evaluation](#evaluation)
+[Official UI](https://search.jina.ai/) | [UI Code](https://github.com/jina-ai/deepsearch-ui) | [Official API](https://jina.ai/deepsearch) | [Evaluation](#evaluation)
 
 Keep searching, reading webpages, reasoning until an answer is found (or the token budget is exceeded). Useful for deeply investigating a query.
 
@@ -60,13 +60,15 @@ You can try it on [our official site](https://search.jina.ai).
 
 ### Official API
 
-You can also use our official DeepSearch API, hosted and optimized by Jina AI:
+You can also use [our official DeepSearch API](https://jina.ai/deepsearch):
 
 ```
 https://deepsearch.jina.ai/v1/chat/completions
 ```
 
-You can use it with any OpenAI-compatible client. For the authentication Bearer, get your Jina API key from https://jina.ai
+You can use it with any OpenAI-compatible client. 
+
+For the authentication Bearer, API key, rate limit, get from https://jina.ai/deepsearch.
 
 #### Client integration guidelines
 
