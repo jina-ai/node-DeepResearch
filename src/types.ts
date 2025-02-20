@@ -113,8 +113,7 @@ export type EvaluationResponse = {
   think: string;
   type?: 'definitive' | 'freshness' | 'plurality' | 'attribution';
   freshness_analysis?: {
-    dates_mentioned: string[];
-    current_time: string;
+    days_ago: number;
     max_age_days?: number;
   };
   plurality_analysis?: {

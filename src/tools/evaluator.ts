@@ -21,8 +21,7 @@ const freshnessSchema = z.object({
   ...baseSchema,
   type: z.literal('freshness'),
   freshness_analysis: z.object({
-    dates_mentioned: z.array(z.string()).describe('All dates mentioned in the answer'),
-    current_time: z.string().describe('Current system time when evaluation was performed'),
+    days_ago: z.number().describe('Inferred dates or timeframes mentioned in the answer and relative to the current time'),
     max_age_days: z.number().optional().describe('Maximum allowed age in days before content is considered outdated')
   })
 });
@@ -164,17 +163,17 @@ function getFreshnessPrompt(question: string, answer: string, currentTime: strin
 <rules>
 Question-Answer Freshness Checker Guidelines
 
+# Revised QA Type Maximum Age Table
+
 | QA Type                  | Max Age (Days) | Notes                                                                 |
 |--------------------------|--------------|-----------------------------------------------------------------------|
+| Financial Data (Real-time)| 0.1        | Stock prices, exchange rates, crypto (real-time preferred)             |
 | Breaking News            | 1           | Immediate coverage of major events                                     |
 | News/Current Events      | 1           | Time-sensitive news, politics, or global events                        |
 | Weather Forecasts        | 1           | Accuracy drops significantly after 24 hours                            |
 | Sports Scores/Events     | 1           | Live updates required for ongoing matches                              |
-| Financial Data (Real-time)| 0.1        | Stock prices, exchange rates, crypto (real-time preferred)             |
 | Security Advisories      | 1           | Critical security updates and patches                                  |
 | Social Media Trends      | 1           | Viral content, hashtags, memes                                         |
-| Stock Market Updates     | 1           | Daily market movements and trading information                         |
-| Current Events           | 3           | Developing stories with slightly longer relevance                      |
 | Cybersecurity Threats    | 7           | Rapidly evolving vulnerabilities/patches                               |
 | Tech News                | 7           | Technology industry updates and announcements                          |
 | Political Developments   | 7           | Legislative changes, political statements                              |
@@ -191,24 +190,18 @@ Question-Answer Freshness Checker Guidelines
 | Legal/Regulatory Updates | 30          | Laws, compliance rules (jurisdiction-dependent)                        |
 | Economic Forecasts       | 30          | Macroeconomic predictions and analysis                                 |
 | Consumer Trends          | 45          | Shifting consumer preferences and behaviors                            |
-| Scientific Discoveries   | 60          | New research findings and breakthroughs                                |
-| Healthcare Guidelines    | 60          | Medical recommendations and best practices                             |
+| Scientific Discoveries   | 60          | New research findings and breakthroughs (includes all scientific research) |
+| Healthcare Guidelines    | 60          | Medical recommendations and best practices (includes medical guidelines)|
 | Environmental Reports    | 60          | Climate and environmental status updates                               |
-| Medical Guidelines       | 90          | Recommendations from health authorities (e.g., CDC, WHO)               |
 | Best Practices           | 90          | Industry standards and recommended procedures                          |
-| Academic Research        | 90          | Scholarly publications and findings                                    |
 | API Documentation        | 90          | Technical specifications and implementation guides                     |
+| Tutorial Content         | 180         | How-to guides and instructional materials (includes educational content)|
 | Tech Product Info        | 180         | Product specs, release dates, or pricing                               |
-| Tutorial Content         | 180         | How-to guides and instructional materials                              |
 | Statistical Data         | 180         | Demographic and statistical information                                |
 | Reference Material       | 180         | General reference information and resources                            |
-| Company Info             | 365         | Earnings reports, leadership changes, mergers                          |
-| Scientific Research      | 365         | Peer-reviewed studies (field-dependent, e.g., COVID-19 = shorter)      |
 | Historical Content       | 365         | Events and information from the past year                              |
-| Educational Content      | 1095        | Curriculum updates (e.g., math vs. AI courses)                         |
 | Cultural Trends          | 730         | Shifts in language, fashion, or social norms                           |
 | Entertainment Releases   | 730         | Movie/TV show schedules, media catalogs                                |
-| Historical Facts         | ∞           | Non-changing historical data (no expiration)                           |
 | Factual Knowledge        | ∞           | Static facts (e.g., historical events, geography, physical constants)   |
 
 ### Implementation Notes:
@@ -229,85 +222,36 @@ function getPluralityPrompt(question: string, answer: string): string {
   return `You are an evaluator that analyzes if answers provide the appropriate number of items requested in the question.
 
 <rules>
-Question Type: Explicit Count
-Expected Items: Exact match to number specified
-Evaluation Rules: 1. Must provide exactly the requested number 2. Items must be distinct/non-redundant 3. Each item must be relevant to query
-Examples: Q: "List 5 ways to improve productivity" A: Must contain exactly 5 distinct methods
+Question Type Reference Table
 
-Question Type: Numeric Range
-Expected Items: Any number within specified range
-Evaluation Rules: 1. Count must fall within given range 2. Items must be distinct/non-redundant 3. For "at least N", minimum threshold must be met
-Examples: Q: "Give me 3-5 investment strategies" A: Must contain 3, 4, or 5 strategies
-
-Question Type: Implied Multiple
-Expected Items: ≥ 2
-Evaluation Rules: 1. Must provide more than one item 2. Items should be balanced in detail/importance 3. Typically requires 2-4 items unless context suggests more
-Examples: Q: "What are some benefits of exercise?" A: Should provide at least 2 distinct benefits
-
-Question Type: "Few"
-Expected Items: 2-4
-Evaluation Rules: 1. Must provide between 2-4 items 2. Items should be substantive 3. Quality over quantity
-Examples: Q: "Suggest a few books on leadership" A: Should provide 2-4 book recommendations
-
-Question Type: "Several"
-Expected Items: 3-7
-Evaluation Rules: 1. Must provide between 3-7 items 2. Should be comprehensive but focused 3. Each item deserves brief explanation
-Examples: Q: "What are several causes of climate change?" A: Should provide 3-7 distinct causes
-
-Question Type: "Many"
-Expected Items: 7+
-Evaluation Rules: 1. Must provide 7 or more items 2. May be more concise per item 3. Should demonstrate breadth of possibilities
-Examples: Q: "List many ways to save energy" A: Should provide 7+ energy-saving methods
-
-Question Type: "Most important"
-Expected Items: Top 3-5 by relevance
-Evaluation Rules: 1. Must prioritize by importance 2. Should explain ranking criteria 3. Items must be ordered by significance
-Examples: Q: "What are the most important factors in college selection?" A: Should provide top 3-5 factors in ranked order
-
-Question Type: "Top N"
-Expected Items: Exactly N, ranked
-Evaluation Rules: 1. Must provide exactly N items 2. Must be ordered by importance/relevance 3. Ranking criteria should be clear
-Examples: Q: "What are the top 3 programming languages to learn?" A: Must list exactly 3 languages in ranked order
-
-Question Type: "Pros and Cons"
-Expected Items: ≥ 2 of each
-Evaluation Rules: 1. Must provide balanced perspectives 2. Should have at least 2 items per category 3. Items should address different aspects
-Examples: Q: "What are the pros and cons of remote work?" A: Should provide at least 2 pros and 2 cons
-
-Question Type: "Compare X and Y"
-Expected Items: ≥ 3 comparison points
-Evaluation Rules: 1. Must address at least 3 distinct comparison dimensions 2. Should provide balanced treatment of both subjects 3. Points should cover major differences/similarities
-Examples: Q: "Compare electric and gas cars" A: Should compare at least 3 aspects (cost, environment, performance, etc.)
-
-Question Type: "Steps" or "Process"
-Expected Items: All essential steps
-Evaluation Rules: 1. Must include every critical step 2. Steps must be in logical order 3. No missing dependencies between steps
-Examples: Q: "How do I reset my router?" A: Must include all necessary steps in correct sequence
-
-Question Type: "Examples"
-Expected Items: ≥ 3 unless specified
-Evaluation Rules: 1. Must provide at least 3 examples unless count specified 2. Examples should be diverse/representative 3. Examples must be concrete, not theoretical
-Examples: Q: "Give examples of renewable energy" A: Should provide at least 3 distinct examples
-
-Question Type: "Comprehensive"
-Expected Items: 10+
-Evaluation Rules: 1. Must provide extensive coverage (10+ items) 2. Should cover major categories and subcategories 3. Should demonstrate domain expertise
-Examples: Q: "Give a comprehensive list of investing options" A: Should provide 10+ investment types with categories
-
-Question Type: "Brief" or "Quick"
-Expected Items: 1-3
-Evaluation Rules: 1. Must be concise (1-3 items) 2. Focus on most important/relevant 3. Each item should be described efficiently
-Examples: Q: "Give me a brief overview of quantum computing" A: Should cover 1-3 main concepts concisely
-
-Question Type: "Complete"
-Expected Items: All possible items
-Evaluation Rules: 1. Must be exhaustive within reasonable scope 2. No major omissions within category 3. May require categorization for clarity
-Examples: Q: "List all planets in our solar system" A: Must include all 8 planets (or 9 if including Pluto)
-
-Question Type: Unspecified Analysis
-Expected Items: 3-5 key points
-Evaluation Rules: 1. Default to 3-5 main points for undefined requests 2. Should cover primary aspects 3. Balance breadth and depth
-Examples: Q: "Analyze the housing market" A: Should address 3-5 key factors affecting housing
+| Question Type | Expected Items | Evaluation Rules |
+|---------------|----------------|------------------|
+| Explicit Count | Exact match to number specified | Provide exactly the requested number of distinct, non-redundant items relevant to the query. |
+| Numeric Range | Any number within specified range | Ensure count falls within given range with distinct, non-redundant items. For "at least N" queries, meet minimum threshold. |
+| Implied Multiple | ≥ 2 | Provide multiple items (typically 2-4 unless context suggests more) with balanced detail and importance. |
+| "Few" | 2-4 | Offer 2-4 substantive items prioritizing quality over quantity. |
+| "Several" | 3-7 | Include 3-7 items with comprehensive yet focused coverage, each with brief explanation. |
+| "Many" | 7+ | Present 7+ items demonstrating breadth, with concise descriptions per item. |
+| "Most important" | Top 3-5 by relevance | Prioritize by importance, explain ranking criteria, and order items by significance. |
+| "Top N" | Exactly N, ranked | Provide exactly N items ordered by importance/relevance with clear ranking criteria. |
+| "Pros and Cons" | ≥ 2 of each category | Present balanced perspectives with at least 2 items per category addressing different aspects. |
+| "Compare X and Y" | ≥ 3 comparison points | Address at least 3 distinct comparison dimensions with balanced treatment covering major differences/similarities. |
+| "Steps" or "Process" | All essential steps | Include all critical steps in logical order without missing dependencies. |
+| "Examples" | ≥ 3 unless specified | Provide at least 3 diverse, representative, concrete examples unless count specified. |
+| "Comprehensive" | 10+ | Deliver extensive coverage (10+ items) across major categories/subcategories demonstrating domain expertise. |
+| "Brief" or "Quick" | 1-3 | Present concise content (1-3 items) focusing on most important elements described efficiently. |
+| "Complete" | All relevant items | Provide exhaustive coverage within reasonable scope without major omissions, using categorization if needed. |
+| "Thorough" | 7-10 | Offer detailed coverage addressing main topics and subtopics with both breadth and depth. |
+| "Overview" | 3-5 | Cover main concepts/aspects with balanced coverage focused on fundamental understanding. |
+| "Summary" | 3-5 key points | Distill essential information capturing main takeaways concisely yet comprehensively. |
+| "Main" or "Key" | 3-7 | Focus on most significant elements fundamental to understanding, covering distinct aspects. |
+| "Essential" | 3-7 | Include only critical, necessary items without peripheral or optional elements. |
+| "Basic" | 2-5 | Present foundational concepts accessible to beginners focusing on core principles. |
+| "Detailed" | 5-10 with elaboration | Provide in-depth coverage with explanations beyond listing, including specific information and nuance. |
+| "Common" | 4-8 most frequent | Focus on typical or prevalent items, ordered by frequency when possible, that are widely recognized. |
+| "Primary" | 2-5 most important | Focus on dominant factors with explanation of their primacy and outsized impact. |
+| "Secondary" | 3-7 supporting items | Present important but not critical items that complement primary factors and provide additional context. |
+| Unspecified Analysis | 3-5 key points | Default to 3-5 main points covering primary aspects with balanced breadth and depth. |
 </rules>
 
 Now evaluate this pair:
