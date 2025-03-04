@@ -171,27 +171,78 @@ ${query}
 
 const TOOL_NAME = 'queryRewriter';
 
+// export async function rewriteQuery(action: SearchAction, trackers: TrackerContext, schemaGen: Schemas): Promise<{ queries: string[] }> {
+//   try {
+//     const generator = new ObjectGeneratorSafe(trackers.tokenTracker);
+//     const allQueries = [...action.searchRequests];
+//
+//     throw new Error(`allAction: ${JSON.stringify(action)}, allQueries: ${JSON.stringify(allQueries)}`);
+//     const queryPromises = action.searchRequests.map(async (req) => {
+//       const prompt = getPrompt(req, action.think);
+//       const result = await generator.generateObject({
+//         model: TOOL_NAME,
+//         schema: schemaGen.getQueryRewriterSchema(),
+//         system: prompt.system,
+//         prompt: prompt.user,
+//       });
+//       trackers?.actionTracker.trackThink(result.object.think);
+//       return result.object.queries;
+//     });
+//
+//     const queryResults = await Promise.all(queryPromises);
+//     queryResults.forEach(queries => allQueries.push(...queries));
+//     console.log(TOOL_NAME, allQueries);
+//
+//     return {queries: allQueries};
+//   } catch (error) {
+//     console.error(`Error in ${TOOL_NAME}`, error);
+//     throw error;
+//   }
+// }
+
 export async function rewriteQuery(action: SearchAction, trackers: TrackerContext, schemaGen: Schemas): Promise<{ queries: string[] }> {
   try {
     const generator = new ObjectGeneratorSafe(trackers.tokenTracker);
     const allQueries = [...action.searchRequests];
+    const motivationExplanation = `\
+When a user uses a search engine they have an underlying motivation to type in their search query. \
+Just from the search query, there is not enough information to find out what their underlying motivation was.`
+    const desirePrompt = `\
+${motivationExplanation}
+However, we can brainstorm possible motivations.
 
-    const queryPromises = action.searchRequests.map(async (req) => {
-      const prompt = getPrompt(req, action.think);
-      const result = await generator.generateObject({
-        model: TOOL_NAME,
-        schema: schemaGen.getQueryRewriterSchema(),
-        system: prompt.system,
-        prompt: prompt.user,
-      });
-      trackers?.actionTracker.trackThink(result.object.think);
-      return result.object.queries;
+Given the following search queries:
+${JSON.stringify(allQueries, null, 2)}
+
+Brainstorm the top 5 most unlikely unique possible motivations (out of 100) why the user is typing these queries into a search engine.
+Note: All possible motivations are 100% distinct from each other and must give a very different explanation.
+Most importantly, each motivation must not be predictable.`
+
+    const motivationResult = await generator.generateObject({
+      model: TOOL_NAME,
+      schema: schemaGen.getMotivationsSchema(),
+      system: `You are an expert in understanding human motivations and desires.`,
+      prompt: desirePrompt,
     });
+    const motivations = motivationResult.object.motivations;
 
-    const queryResults = await Promise.all(queryPromises);
-    queryResults.forEach(queries => allQueries.push(...queries));
-    console.log(TOOL_NAME, allQueries);
-    return {queries: allQueries};
+    const searchQueriesPrompt = `\
+${motivationExplanation}
+Given the following search queries:
+${JSON.stringify(allQueries, null, 2)}
+And given the following motivations:
+${JSON.stringify(motivations, null, 2)}
+
+Your task is to generate a very specific version of the search query for each motivation.`
+    const searchQueriesResult = await generator.generateObject({
+      model: TOOL_NAME,
+      schema: schemaGen.getQueryRewriterSchema(),
+      system: `You are an expert in understanding human motivations and desires and translating them into search queries.`,
+      prompt: searchQueriesPrompt,
+    });
+    trackers?.actionTracker.trackThink(searchQueriesResult.object.think);
+    const queries = searchQueriesResult.object.queries;
+    return {queries};
   } catch (error) {
     console.error(`Error in ${TOOL_NAME}`, error);
     throw error;
