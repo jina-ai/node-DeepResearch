@@ -5,7 +5,7 @@ import {readUrl, removeAllLineBreaks} from "./tools/read";
 import fs from 'fs/promises';
 import {SafeSearchType, search as duckSearch} from "duck-duck-scrape";
 import {braveSearch} from "./tools/brave-search";
-import {rewriteQuery} from "./tools/query-rewriter";
+import {IS_DEEP_QUERY_REWRITE, rewriteQuery, rewriteQueryDeep} from "./tools/query-rewriter";
 import {dedupQueries} from "./tools/jina-dedup";
 import {evaluateAnswer, evaluateQuestion} from "./tools/evaluator";
 import {analyzeSteps} from "./tools/error-analyzer";
@@ -310,7 +310,7 @@ export async function getResponse(question?: string,
       evaluationMetrics[currentQuestion].push('strict')
     }
 
-    if (step === 1 && evaluationMetrics[currentQuestion].includes('freshness')) {
+    if (step === 1) {
       // if it detects freshness, avoid direct answer at step 1
       allowAnswer = false;
       allowReflect = false;
@@ -526,7 +526,13 @@ But then you realized you have asked them before. You decided to to think out of
       thisStep.searchRequests = chooseK((await dedupQueries(thisStep.searchRequests, [], context.tokenTracker)).unique_queries, MAX_QUERIES_PER_STEP);
 
       // rewrite queries
-      let {queries: keywordsQueries} = await rewriteQuery(thisStep, context, SchemaGen);
+      let rewriteQueryFn
+      if (IS_DEEP_QUERY_REWRITE) {
+        rewriteQueryFn = rewriteQueryDeep;
+      } else {
+        rewriteQueryFn = rewriteQuery;
+      }
+      let {queries: keywordsQueries} = await rewriteQueryFn(thisStep, context, SchemaGen);
       // avoid exisitng searched queries
       keywordsQueries = chooseK((await dedupQueries(keywordsQueries, allKeywords, context.tokenTracker)).unique_queries, MAX_QUERIES_PER_STEP);
 
