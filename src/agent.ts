@@ -310,8 +310,8 @@ export async function getResponse(question?: string,
       evaluationMetrics[currentQuestion].push('strict')
     }
 
-    if (step === 1 && evaluationMetrics[currentQuestion].includes('freshness')) {
-      // if it detects freshness, avoid direct answer at step 1
+    if (step === 1) {
+      // always avoid direct answer at step 1
       allowAnswer = false;
       allowReflect = false;
     }
