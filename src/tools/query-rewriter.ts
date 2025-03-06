@@ -214,7 +214,7 @@ However, we can brainstorm possible motivations.
 Given the following search queries:
 ${JSON.stringify(allQueries, null, 2)}
 
-Brainstorm the top 5 most likely unique possible motivations (out of 100) why the user is typing these queries into a search engine.
+Brainstorm the top 10 most unlikely unique possible motivations (out of 100) why the user is typing these queries into a search engine.
 Note: All possible motivations are 100% distinct from each other and must give a very different explanation.
 Most importantly, each motivation must not be predictable.`
 
