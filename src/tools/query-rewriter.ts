@@ -177,7 +177,6 @@ export async function rewriteQuery(action: SearchAction, trackers: TrackerContex
     const generator = new ObjectGeneratorSafe(trackers.tokenTracker);
     const allQueries = [...action.searchRequests];
 
-    throw new Error(`allAction: ${JSON.stringify(action)}, allQueries: ${JSON.stringify(allQueries)}`);
     const queryPromises = action.searchRequests.map(async (req) => {
       const prompt = getPrompt(req, action.think);
       const result = await generator.generateObject({
@@ -193,7 +192,6 @@ export async function rewriteQuery(action: SearchAction, trackers: TrackerContex
     const queryResults = await Promise.all(queryPromises);
     queryResults.forEach(queries => allQueries.push(...queries));
     console.log(TOOL_NAME, allQueries);
-
     return {queries: allQueries};
   } catch (error) {
     console.error(`Error in ${TOOL_NAME}`, error);
