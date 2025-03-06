@@ -201,6 +201,7 @@ export async function rewriteQuery(action: SearchAction, trackers: TrackerContex
 
 export async function rewriteQueryDeep(action: SearchAction, trackers: TrackerContext, schemaGen: Schemas): Promise<{ queries: string[] }> {
   try {
+    console.log('call deep rewrite')
     const generator = new ObjectGeneratorSafe(trackers.tokenTracker);
     const allQueries = [...action.searchRequests];
     const motivationExplanation = `\
@@ -213,7 +214,7 @@ However, we can brainstorm possible motivations.
 Given the following search queries:
 ${JSON.stringify(allQueries, null, 2)}
 
-Brainstorm the top 5 most unlikely unique possible motivations (out of 100) why the user is typing these queries into a search engine.
+Brainstorm the top 5 most likely unique possible motivations (out of 100) why the user is typing these queries into a search engine.
 Note: All possible motivations are 100% distinct from each other and must give a very different explanation.
 Most importantly, each motivation must not be predictable.`
 
@@ -241,6 +242,7 @@ Your task is to generate a very specific version of the search query for each mo
     });
     trackers?.actionTracker.trackThink(searchQueriesResult.object.think);
     const queries = searchQueriesResult.object.queries;
+    console.log('here are the queries', queries)
     return {queries};
   } catch (error) {
     console.error(`Error in ${TOOL_NAME}`, error);
