@@ -130,6 +130,16 @@ export class Schemas {
     });
   }
 
+  getMotivationsSchema(): z.ZodObject<any> {
+    return z.object({
+      think: z.string().describe(`Explain why you choose those underlying motivations. ${this.getLanguagePrompt()}`).max(500),
+      motivations: z.array(z.string().describe('actual motivation for the search query, one sentence'))
+        .min(1)
+        .max(MAX_QUERIES_PER_STEP)
+        .describe(`'Array of unique motivations, all motivations are orthogonal to each other. Maximum ${MAX_QUERIES_PER_STEP} motivations allowed.'`)
+    });
+  }
+
   getEvaluatorSchema(evalType: EvaluationType): z.ZodObject<any> {
     const baseSchemaBefore = {
       think: z.string().describe(`Explanation the thought process why the answer does not pass the evaluation, ${this.getLanguagePrompt()}`).max(500),
