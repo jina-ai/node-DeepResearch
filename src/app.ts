@@ -391,16 +391,31 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   console.log('messages', JSON.stringify(body.messages));
 
   // clean <think> from all assistant messages
-  body.messages?.filter(message => message.role === 'assistant').forEach(message => {
-    // 2 cases message.content can be a string or an array
-    if (typeof message.content === 'string') {
-        message.content = (message.content as string).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    } else if (Array.isArray(message.content)) {
-      // find all type: text and clean <think> from .text
-      message.content.forEach((content: any) => {
-        if (content.type === 'text') {
-          content.text = (content.text as string).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-      }});
+  body.messages?.forEach(message => {
+    if (message.role === 'assistant') {
+      // 2 cases message.content can be a string or an array
+      if (typeof message.content === 'string') {
+          message.content = (message.content as string).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      } else if (Array.isArray(message.content)) {
+        // find all type: text and clean <think> from .text
+        message.content.forEach((content: any) => {
+          if (content.type === 'text') {
+            content.text = (content.text as string).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        }});
+      }
+    } else if (message.role === 'user' && Array.isArray(message.content)) {
+      message.content = message.content.map((content: any) => {
+        if (content.type === 'image_url') {
+          return {
+            type: 'image',
+            image: content.image_url?.url || '',
+          }
+        }
+        return content;
+      });
+    } else if (message.role === 'system') {
+      // not sure we should change it, but the vercel ai sdk cannot support the system role
+      message.role = 'user' as any;
     }
   });
 
