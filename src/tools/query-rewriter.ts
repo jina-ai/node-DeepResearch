@@ -2,6 +2,7 @@ import {PromptPair, SearchAction, TrackerContext} from '../types';
 import {ObjectGeneratorSafe} from "../utils/safe-generator";
 import {Schemas} from "../utils/schemas";
 
+export const IS_DEEP_QUERY_REWRITE = true
 
 function getPrompt(query: string, think: string): PromptPair {
   const currentTime = new Date();
@@ -192,6 +193,57 @@ export async function rewriteQuery(action: SearchAction, trackers: TrackerContex
     queryResults.forEach(queries => allQueries.push(...queries));
     console.log(TOOL_NAME, allQueries);
     return {queries: allQueries};
+  } catch (error) {
+    console.error(`Error in ${TOOL_NAME}`, error);
+    throw error;
+  }
+}
+
+export async function rewriteQueryDeep(action: SearchAction, trackers: TrackerContext, schemaGen: Schemas): Promise<{ queries: string[] }> {
+  try {
+    console.log('call deep rewrite')
+    const generator = new ObjectGeneratorSafe(trackers.tokenTracker);
+    const allQueries = [...action.searchRequests];
+    const motivationExplanation = `\
+When a user uses a search engine they have an underlying motivation to type in their search query. \
+Just from the search query, there is not enough information to find out what their underlying motivation was.`
+    const desirePrompt = `\
+${motivationExplanation}
+However, we can brainstorm possible motivations.
+
+Given the following search queries:
+${JSON.stringify(allQueries, null, 2)}
+
+Brainstorm the top 10 most unlikely unique possible motivations (out of 100) why the user is typing these queries into a search engine.
+Note: All possible motivations are 100% distinct from each other and must give a very different explanation.
+Most importantly, each motivation must not be predictable.`
+
+    const motivationResult = await generator.generateObject({
+      model: TOOL_NAME,
+      schema: schemaGen.getMotivationsSchema(),
+      system: `You are an expert in understanding human motivations and desires.`,
+      prompt: desirePrompt,
+    });
+    const motivations = motivationResult.object.motivations;
+
+    const searchQueriesPrompt = `\
+${motivationExplanation}
+Given the following search queries:
+${JSON.stringify(allQueries, null, 2)}
+And given the following motivations:
+${JSON.stringify(motivations, null, 2)}
+
+Your task is to generate a very specific version of the search query for each motivation.`
+    const searchQueriesResult = await generator.generateObject({
+      model: TOOL_NAME,
+      schema: schemaGen.getQueryRewriterSchema(),
+      system: `You are an expert in understanding human motivations and desires and translating them into search queries.`,
+      prompt: searchQueriesPrompt,
+    });
+    trackers?.actionTracker.trackThink(searchQueriesResult.object.think);
+    const queries = searchQueriesResult.object.queries;
+    console.log('here are the queries', queries)
+    return {queries};
   } catch (error) {
     console.error(`Error in ${TOOL_NAME}`, error);
     throw error;
