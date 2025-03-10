@@ -414,8 +414,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         return content;
       });
     } else if (message.role === 'system') {
-      // not sure we should change it, but the vercel ai sdk cannot support the system role
-      message.role = 'user' as any;
+      if (Array.isArray(message.content)) {
+        message.content = message.content.map((content: any) => `${content.text || content}`).join(' ');
+      }
     }
   });
 
