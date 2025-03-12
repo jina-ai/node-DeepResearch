@@ -391,33 +391,47 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
   console.log('messages', JSON.stringify(body.messages));
 
   // clean <think> from all assistant messages
-  body.messages?.forEach(message => {
+  body.messages = body.messages?.filter(message => {
     if (message.role === 'assistant') {
-      // 2 cases message.content can be a string or an array
+       // 2 cases message.content can be a string or an array
       if (typeof message.content === 'string') {
-          message.content = (message.content as string).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        message.content = (message.content as string).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        // Filter out the message if the content is empty after <think> removal
+        return message.content !== '';
       } else if (Array.isArray(message.content)) {
         // find all type: text and clean <think> from .text
         message.content.forEach((content: any) => {
           if (content.type === 'text') {
             content.text = (content.text as string).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-        }});
+          }
+        });
+        //Filter out any content objects in the array that now have null/undefined/empty text.
+        message.content = message.content.filter((content:any) => 
+          !(content.type === 'text' && content.text === '')
+        );
+
+        //Filter out the message if the array is now empty
+        return message.content.length > 0;
       }
+      return true; // Keep the message if it's not an assistant message, or if assistant message has non string or array content.
     } else if (message.role === 'user' && Array.isArray(message.content)) {
       message.content = message.content.map((content: any) => {
         if (content.type === 'image_url') {
-          return {
-            type: 'image',
-            image: content.image_url?.url || '',
-          }
+            return {
+                type: 'image',
+                image: content.image_url?.url || '',
+            }
         }
         return content;
       });
+      return true;
     } else if (message.role === 'system') {
       if (Array.isArray(message.content)) {
-        message.content = message.content.map((content: any) => `${content.text || content}`).join(' ');
+          message.content = message.content.map((content: any) => `${content.text || content}`).join(' ');
       }
+      return true;
     }
+    return true; // Keep other messages
   });
 
   let {tokenBudget, maxBadAttempts} = getTokenBudgetAndMaxAttempts(
