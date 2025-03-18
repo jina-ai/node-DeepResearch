@@ -27,7 +27,7 @@ export class ActionTracker extends EventEmitter {
     if (lang) {
       think = getI18nText(think, lang, params);
     }
-    this.state = {...this.state, thisStep: {...this.state.thisStep, think}};
+    this.state = {...this.state, thisStep: {...this.state.thisStep, URLTargets: [], think} as StepAction};
     this.emit('action', this.state.thisStep);
   }
 
