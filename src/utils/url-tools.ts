@@ -1,4 +1,4 @@
-import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction} from "../types";
+import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction, ImageObject} from "../types";
 import {getI18nText, smartMergeStrings} from "./text-tools";
 import {rerankDocuments} from "../tools/jina-rerank";
 import {readUrl} from "../tools/read";
@@ -6,6 +6,7 @@ import {Schemas} from "./schemas";
 import {cherryPick} from "../tools/jina-latechunk";
 import {formatDateBasedOnType} from "./date-tools";
 import {classifyText} from "../tools/jina-classify-spam";
+import { processImage } from "./image-tools";
 
 export function normalizeUrl(urlString: string, debug = false, options = {
   removeAnchors: true,
@@ -445,7 +446,7 @@ export async function processURLs(
   visitedURLs: string[],
   badURLs: string[],
   schemaGen: Schemas,
-  question: string
+  question: string,
 ): Promise<{ urlResults: any[], success: boolean }> {
   // Skip if no URLs to process
   if (urls.length === 0) {
@@ -453,6 +454,7 @@ export async function processURLs(
   }
 
   const badHostnames: string[] = [];
+  const images: ImageObject[] = [];
 
   // Track the reading action
   const thisStep: VisitAction = {
@@ -474,7 +476,7 @@ export async function processURLs(
         // Store normalized URL for consistent reference
         url = normalizedUrl;
 
-        const {response} = await readUrl(url, true, context.tokenTracker);
+        const {response} = await readUrl(url, true, context.tokenTracker, true);
         const {data} = response;
         const guessedTime = await getLastModified(url);
         if (guessedTime) {
@@ -516,6 +518,16 @@ export async function processURLs(
           // in-page link has lower initial weight comparing to search links
           if (r.url) {
             addToAllURLs(r, allURLs, 0.1);
+          }
+        });
+
+        // Process images
+        const imageUrls = Object.values(data.images || {});
+        console.log('Processing images:', imageUrls.length);
+        imageUrls.forEach(async (url) => {
+          const imageObj = await processImage(url);
+          if (imageObj) {
+            images.push(imageObj);
           }
         });
 

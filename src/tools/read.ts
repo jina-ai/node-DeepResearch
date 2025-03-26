@@ -3,7 +3,7 @@ import {TokenTracker} from "../utils/token-tracker";
 import {ReadResponse} from '../types';
 import {JINA_API_KEY} from "../config";
 
-export function readUrl(url: string, withAllLinks?: boolean, tracker?: TokenTracker): Promise<{ response: ReadResponse }> {
+export function readUrl(url: string, withAllLinks?: boolean, tracker?: TokenTracker, withAllImages?: boolean): Promise<{ response: ReadResponse }> {
   return new Promise((resolve, reject) => {
     if (!url.trim()) {
       reject(new Error('URL cannot be empty'));
@@ -19,11 +19,15 @@ export function readUrl(url: string, withAllLinks?: boolean, tracker?: TokenTrac
       'Accept': 'application/json',
       'Authorization': `Bearer ${JINA_API_KEY}`,
       'Content-Type': 'application/json',
-      'X-Retain-Images': 'none',
       'X-Md-Link-Style': 'discarded',
     };
     if (withAllLinks) {
       headers['X-With-Links-Summary'] = 'all'
+    }
+    if (withAllImages) {
+      headers['X-With-Images-Summary'] = 'all'
+    } else {
+      headers['X-Retain-Images'] = 'none'
     }
 
     const options = {
