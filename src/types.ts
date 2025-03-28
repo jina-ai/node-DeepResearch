@@ -52,6 +52,7 @@ export type ReflectAction = BaseAction & {
 export type VisitAction = BaseAction & {
   action: "visit";
   URLTargets: string[];
+  image?: ImageObject;
 };
 
 export type CodingAction = BaseAction & {
@@ -274,6 +275,7 @@ export interface ChatCompletionResponse {
   visitedURLs?: string[];
   readURLs?: string[];
   numURLs?: number;
+  images?: ImageObject[];
 }
 
 export interface ChatCompletionChunk {
@@ -298,6 +300,7 @@ export interface ChatCompletionChunk {
   visitedURLs?: string[];
   readURLs?: string[];
   numURLs?: number;
+  images?: ImageObject[];
 }
 
 // Tracker Types

@@ -1,4 +1,4 @@
-import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction, ImageObject} from "../types";
+import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction} from "../types";
 import {getI18nText, smartMergeStrings} from "./text-tools";
 import {rerankDocuments} from "../tools/jina-rerank";
 import {readUrl} from "../tools/read";
@@ -454,7 +454,6 @@ export async function processURLs(
   }
 
   const badHostnames: string[] = [];
-  const images: ImageObject[] = [];
 
   // Track the reading action
   const thisStep: VisitAction = {
@@ -523,11 +522,16 @@ export async function processURLs(
 
         // Process images
         const imageUrls = Object.values(data.images || {});
-        console.log('Processing images:', imageUrls.length);
         imageUrls.forEach(async (url) => {
           const imageObj = await processImage(url);
           if (imageObj) {
-            images.push(imageObj);
+            context.actionTracker.trackAction({
+              thisStep: {
+                action: 'visit',
+                think: '',
+                image: imageObj,
+              } as VisitAction
+            });
           }
         });
 

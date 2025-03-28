@@ -7,12 +7,14 @@ import {
   ChatCompletionResponse,
   ChatCompletionChunk,
   AnswerAction,
-  Model, StepAction, VisitAction
+  Model, StepAction, VisitAction,
+  ImageObject
 } from './types';
 import {TokenTracker} from "./utils/token-tracker";
 import {ActionTracker} from "./utils/action-tracker";
 import {ObjectGeneratorSafe} from "./utils/safe-generator";
 import {jsonSchema} from "ai"; // or another converter library
+import {rankImages} from './utils/image-tools';
 
 const app = express();
 
@@ -463,6 +465,10 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     tokenTracker: new TokenTracker(),
     actionTracker: new ActionTracker()
   };
+  const allImages: ImageObject[] = [];
+  const useMsgs = body.messages!.filter(message => message.role === 'user');
+  const lastMsg = useMsgs[useMsgs.length - 1];
+  const query = typeof lastMsg.content === 'string' ? lastMsg.content : lastMsg.content.map((c: any) => c.text).join(' ');
 
   // Add this inside the chat completions endpoint, before setting up the action listener
   const streamingState: StreamingState = {
@@ -501,7 +507,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       // Add content to queue for both thinking steps and final answer
       if (step.action === 'visit') {
         // emit every url in the visit action in url field
-        (step as VisitAction).URLTargets.forEach((url) => {
+        (step as VisitAction).URLTargets?.forEach((url) => {
           const chunk: ChatCompletionChunk = {
             id: requestId,
             object: 'chat.completion.chunk',
@@ -517,6 +523,11 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
           };
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
         });
+        if (step.image) {
+          if (!allImages.find(i => i.data === step.image!.data)) {
+            allImages.push(step.image);
+          }
+        }
       }
       if (step.think) {
         // if not ends with a space, add one
@@ -610,6 +621,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       };
       res.write(`data: ${JSON.stringify(closeThinkChunk)}\n\n`);
 
+      // Get ranked images
+      const images = await rankImages(allImages, query, context?.tokenTracker, finalAnswer);
+
       // After the content is fully streamed, send the final chunk with finish_reason and usage
       const finalChunk: ChatCompletionChunk = {
         id: requestId,
@@ -630,11 +644,15 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         usage,
         visitedURLs,
         readURLs,
-        numURLs: allURLs.length
+        numURLs: allURLs.length,
+        images,
       };
       res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
       res.end();
     } else {
+
+      // Get ranked images
+      const images = await rankImages(allImages, query, context?.tokenTracker, finalAnswer);
 
       const response: ChatCompletionResponse = {
         id: requestId,
@@ -656,7 +674,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         usage,
         visitedURLs,
         readURLs,
-        numURLs: allURLs.length
+        numURLs: allURLs.length,
+        images,
       };
 
       // Log final response (excluding full content for brevity)

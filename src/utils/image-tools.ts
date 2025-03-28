@@ -1,5 +1,7 @@
 import canvas from '@napi-rs/canvas';
 import { ImageObject } from '../types';
+import { TokenTracker } from './token-tracker';
+import { rerankImages } from '../tools/jina-rerank';
 export type { Canvas, Image } from '@napi-rs/canvas';
 
 export const downloadFile = async (uri: string) => {
@@ -90,7 +92,7 @@ export const canvasToBuffer = (canvas: canvas.Canvas, mimeType?: 'image/png' | '
     return canvas.toBuffer((mimeType || 'image/png') as 'image/png');
 }
 
-export async function processImage(url: string): Promise<ImageObject | undefined> {
+export const processImage = async (url: string): Promise<ImageObject | undefined> => {
   try {
     const img = await loadImage(url);
     if (!img) {
@@ -111,7 +113,6 @@ export async function processImage(url: string): Promise<ImageObject | undefined
       width: img.naturalWidth, 
       height: img.naturalHeight,
     };
-    console.log('Processed image successfully:', url);
 
     return imageObj;
   } catch (error) {
@@ -119,3 +120,135 @@ export async function processImage(url: string): Promise<ImageObject | undefined
   }
 }
 
+
+interface RankResult {
+  index: number;
+  relevance_score: number;
+}
+
+export const rankImages = async (
+  images: ImageObject[],
+  query: string,
+  tracker: TokenTracker,
+  answer?: string
+): Promise<ImageObject[]> => {
+  if (images.length === 0) return [];
+
+  const originalImageBytes = images.map((i) => ({
+    bytes: i.data.split(',')[1],
+  }));
+
+  const answerParagraphs = answer
+    ?.split('\n\n\n\n')[0]
+    .split('\n\n')
+    .filter((i) => i.trim().length > 30 && !i.trim().startsWith('```')) || [];
+
+  try {
+    const firstRoundRankResults: RankResult[] = (
+      await rerankImages(query, originalImageBytes, tracker, 20)
+    ).results;
+
+    console.log('First Round Results:', JSON.stringify(firstRoundRankResults));
+
+    if (firstRoundRankResults.length === 0) return [];
+
+    const relevantFirstRoundResults = firstRoundRankResults.filter(
+      (r) => r.relevance_score > 0.1
+    );
+
+    if (answerParagraphs.length === 0) {
+      return relevantFirstRoundResults.map((r) => images[r.index]).slice(0, 5);
+    }
+
+    const intermediateRankedImages = relevantFirstRoundResults.map((r) => ({
+      bytes: originalImageBytes[r.index].bytes,
+      originalIndex: r.index,
+    }));
+
+    const secondRoundRankResults: RankResult[][] = await Promise.all(
+      answerParagraphs.map(async (content) =>
+        (await rerankImages(content, intermediateRankedImages.map((i) => ({ bytes: i.bytes })), tracker, 3)).results
+      )
+    );
+
+    const finalRankedResults: RankResult[] = secondRoundRankResults
+      .flat()
+      .filter((r) => r.relevance_score > 0.5)
+      .sort((a, b) => b.relevance_score - a.relevance_score);
+
+    console.log('Final Ranked Results:', JSON.stringify(finalRankedResults));
+
+    const result: ImageObject[] = [];
+
+    finalRankedResults.forEach((img) => {
+      const originalImageIndex = intermediateRankedImages[img.index].originalIndex;
+      const item = images[originalImageIndex];
+      if (!result.includes(item)) {
+        result.push(item);
+      }
+    });
+
+    console.log('Final Results:', result.length, JSON.stringify(result.map((i) => i.url)));
+    return result;
+  } catch (error) {
+    console.error('Error in getRankedImages:', error);
+    return [];
+  }
+}
+
+export const rankImages2 = async (
+  images: ImageObject[],
+  query: string,
+  tracker: TokenTracker,
+  answer?: string
+): Promise<ImageObject[]> => {
+  const topN = 20; // Adjust as needed
+  const weightQuery = 0.4; // Adjust weights
+  const weightParagraph = 0.6;
+
+  try {
+    const originalImageBytes = images.map((i) => ({
+      bytes: i.data.split(',')[1],
+    }));
+
+    const answerParagraphs = answer
+      ?.split('\n\n\n\n')[0]
+      .split('\n\n')
+      .filter((i) => i.trim().length > 30 && !i.trim().startsWith('```')) || [];
+
+    const firstRoundResults = (await rerankImages(query, originalImageBytes, tracker, topN)).results;
+
+    if (firstRoundResults.length === 0) return []; 
+
+    const selectedImages = firstRoundResults.map((r) => ({
+      bytes: originalImageBytes[r.index].bytes,
+      originalIndex: r.index,
+      queryScore: r.relevance_score,
+    }));
+
+    const paragraphScores: number[][] = await Promise.all(
+      answerParagraphs.map(async (paragraph) =>
+        (await rerankImages(paragraph, selectedImages.map((i) => ({ bytes: i.bytes })), tracker, topN)).results.sort((a,b) => a.index - b.index).map((r) => r.relevance_score)
+      )
+    );
+
+    const imageScores: { index: number; finalScore: number }[] = selectedImages.map((selectedImage, selectedImageIndex) => {
+      let paragraphScore = 0;
+      if(paragraphScores.length > 0) {
+        paragraphScore = paragraphScores.reduce((sum, scores) => sum + scores[selectedImageIndex], 0) / paragraphScores.length;
+      }
+
+      const finalScore = selectedImage.queryScore * weightQuery + paragraphScore * weightParagraph;
+
+      return { index: selectedImage.originalIndex, finalScore };
+    });
+
+    const rankedImages = imageScores.filter((i) => i.finalScore > 0.5).sort((a, b) => b.finalScore - a.finalScore)
+
+    console.log('Ranked Images:', JSON.stringify(rankedImages), JSON.stringify(imageScores));
+    return rankedImages.slice(0, 5).map((rankedImage) => images[rankedImage.index]);
+  } catch (error) {
+    console.error('Error in rankImages:', error);
+    return [];
+  }
+}
