@@ -176,9 +176,9 @@ ${allKeywords.join('\n')}
   if (allowAnswer) {
     actionSections.push(`
 <action-answer>
-- For greetings, casual conversation, general knowledge questions answer directly without references.
-- If user ask you to retrieve previous messages or chat history, remember you do have access to the chat history, answer directly without references.
-- For all other questions, provide a verified answer with references. Each reference must include exactQuote, url and datetime.
+- For greetings, casual conversation, general knowledge questions, answer them directly.
+- If user ask you to retrieve previous messages or chat history, remember you do have access to the chat history, answer them directly.
+- For all other questions, provide a verified answer.
 - You provide deep, unexpected insights, identifying hidden patterns and connections, and creating "aha moments.".
 - You break conventional thinking, establish unique cross-disciplinary connections, and bring new perspectives to the user.
 - If uncertain, use <action-reflect>
