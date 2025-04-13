@@ -21,8 +21,8 @@ export function normalizeUrl(urlString: string, debug = false, options = {
       throw new Error('Empty URL');
     }
 
-    if (urlString.startsWith('https://google.com/') || urlString.startsWith('https://www.google.com')) {
-      throw new Error('Google search link');
+    if (urlString.startsWith('https://google.com/') || urlString.startsWith('https://www.google.com') || urlString.startsWith('https://baidu.com/s?')) {
+      throw new Error('Google/baidu search link');
     }
 
     if (urlString.includes('example.com')) {
