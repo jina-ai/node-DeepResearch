@@ -44,7 +44,7 @@ export async function buildReferences(
   const {chunks: answerChunks, chunk_positions: answerChunkPositions} = await segmentText(answer, context);
 
   // Step 2: Prepare all web content chunks, filtering out those below minimum length
-  const allWebContentChunks = [];
+  const allWebContentChunks: any = [];
   const chunkToSourceMap: any = {};  // Maps chunk index to source information
   const validWebChunkIndices = new Set(); // Tracks indices of valid web chunks
 
@@ -97,64 +97,71 @@ export async function buildReferences(
     });
   }
 
-  // Process all reranking tasks with batch limitation and fallback
-  const MAX_BATCH_SIZE = 2000; // Maximum documents that rerankDocuments can handle
-  const allMatches = [];
+  // Fixed batch size of 512 as suggested
+  const BATCH_SIZE = 512;
 
-  for (const task of rerankTasks) {
-    let rerankResults;
-
+  // Process all reranking tasks in parallel with fixed batch size
+  const processTaskWithBatches = async (task: any) => {
     try {
-      // Handle mini-batching if needed
-      if (allWebContentChunks.length <= MAX_BATCH_SIZE) {
-        // Standard case - everything fits in one batch
-        const result = await rerankDocuments(task.chunk, allWebContentChunks, context.tokenTracker);
-        rerankResults = result.results;
-      } else {
-        // Need mini-batching
-        const batches = [];
-        for (let i = 0; i < allWebContentChunks.length; i += MAX_BATCH_SIZE) {
-          batches.push(allWebContentChunks.slice(i, i + MAX_BATCH_SIZE));
-        }
-
-        // Process each batch and combine results
-        const batchResults = [];
-        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-          const batch = batches[batchIndex];
-          const batchOffset = batchIndex * MAX_BATCH_SIZE;
-
-          const result = await rerankDocuments(task.chunk, batch, context.tokenTracker);
-
-          // Adjust indices to account for batching
-          const adjustedResults = result.results.map(item => ({
-            index: item.index + batchOffset,
-            relevance_score: item.relevance_score
-          }));
-
-          batchResults.push(...adjustedResults);
-        }
-
-        // Sort all results by relevance score
-        batchResults.sort((a, b) => b.relevance_score - a.relevance_score);
-        rerankResults = batchResults;
+      // Create batches of web content chunks
+      const batches = [];
+      for (let i = 0; i < allWebContentChunks.length; i += BATCH_SIZE) {
+        batches.push(allWebContentChunks.slice(i, i + BATCH_SIZE));
       }
+
+      // Process all batches in parallel
+      const batchPromises = batches.map(async (batch, batchIndex) => {
+        const batchOffset = batchIndex * BATCH_SIZE;
+        const result = await rerankDocuments(task.chunk, batch, context.tokenTracker);
+
+        // Adjust indices to account for batching
+        return result.results.map(item => ({
+          index: item.index + batchOffset,
+          relevance_score: item.relevance_score
+        }));
+      });
+
+      // Wait for all batch processing to complete
+      const batchResults = await Promise.all(batchPromises);
+
+      // Combine and sort all results
+      const combinedResults = batchResults.flat();
+      combinedResults.sort((a, b) => b.relevance_score - a.relevance_score);
+
+      return {
+        answerChunkIndex: task.index,
+        answerChunk: task.chunk,
+        answerChunkPosition: task.position,
+        results: combinedResults
+      };
     } catch (error) {
       console.error('Reranking failed, falling back to Jaccard similarity', error);
       // Fallback to Jaccard similarity
       const fallbackResult = await fallbackRerankWithJaccard(task.chunk, allWebContentChunks);
-      rerankResults = fallbackResult.results;
+      return {
+        answerChunkIndex: task.index,
+        answerChunk: task.chunk,
+        answerChunkPosition: task.position,
+        results: fallbackResult.results
+      };
     }
+  };
 
-    // Add to matches list, filtering for valid web chunks
-    for (const match of rerankResults) {
+  // Process all tasks in parallel
+  const taskResults = await Promise.all(rerankTasks.map(processTaskWithBatches));
+
+  // Collect and flatten all matches
+  const allMatches = [];
+  for (const taskResult of taskResults) {
+    for (const match of taskResult.results) {
       // Only include matches where the web chunk is valid (above minimum length)
       if (validWebChunkIndices.has(match.index)) {
         allMatches.push({
           webChunkIndex: match.index,
-          answerChunkIndex: task.index,
+          answerChunkIndex: taskResult.answerChunkIndex,
           relevanceScore: match.relevance_score,
-          answerChunk: task.chunk,
-          answerChunkPosition: task.position
+          answerChunk: taskResult.answerChunk,
+          answerChunkPosition: taskResult.answerChunkPosition
         });
       }
     }
@@ -216,7 +223,7 @@ export async function buildReferences(
   const referencesByPosition = [...references]
     .sort((a, b) => a.answerChunkPosition![0] - b.answerChunkPosition![0]);
 
-  // Insert markers from beginning to end, tracking offset
+// Insert markers from beginning to end, tracking offset
   let offset = 0;
   for (let i = 0; i < referencesByPosition.length; i++) {
     const ref = referencesByPosition[i];
@@ -225,12 +232,17 @@ export async function buildReferences(
     // Calculate position to insert the marker (end of the chunk + current offset)
     let insertPosition = ref.answerChunkPosition![1] + offset;
 
-    // Check if there's a newline at the end of the chunk and adjust position
+    // Check if there's a newline or table pipe at the end of the chunk and adjust position
     const chunkEndText = modifiedAnswer.substring(Math.max(0, insertPosition - 5), insertPosition);
     const newlineMatch = chunkEndText.match(/\n+$/);
+    const tableEndMatch = chunkEndText.match(/\s*\|\s*$/);
+
     if (newlineMatch) {
       // Move the insertion position before the newline(s)
       insertPosition -= newlineMatch[0].length;
+    } else if (tableEndMatch) {
+      // Move the insertion position before the table end pipe
+      insertPosition -= tableEndMatch[0].length;
     }
 
     // Insert the marker
@@ -242,7 +254,6 @@ export async function buildReferences(
     // Update offset for subsequent insertions
     offset += marker.length;
   }
-
   return {
     answer: modifiedAnswer,
     references
