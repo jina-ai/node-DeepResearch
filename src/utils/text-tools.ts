@@ -464,10 +464,11 @@ export function convertHtmlTablesToMd(mdString: string): string {
   try {
     let result = mdString;
 
-    // First check for HTML tables
-    if (mdString.includes('<table>')) {
-      // Regular expression to find HTML tables
-      const tableRegex = /<table>([\s\S]*?)<\/table>/g;
+    // First check for HTML tables with any attributes
+    if (mdString.includes('<table')) {
+      // Regular expression to find HTML tables with any attributes
+      // This matches <table> as well as <table with-any-attributes>
+      const tableRegex = /<table(?:\s+[^>]*)?>([\s\S]*?)<\/table>/g;
       let match;
 
       // Process each table found
@@ -771,11 +772,9 @@ export function repairMarkdownFinal(markdown: string): string {
     while (i < repairedMarkdown.length) {
       if (repairedMarkdown.substring(i, i + 4) === '<hr>' && !isInTable(i)) {
         i += 4;
-      }
-      else if (repairedMarkdown.substring(i, i + 4) === '<br>' && !isInTable(i)) {
+      } else if (repairedMarkdown.substring(i, i + 4) === '<br>' && !isInTable(i)) {
         i += 4;
-      }
-      else {
+      } else {
         result += repairedMarkdown[i];
         i++;
       }

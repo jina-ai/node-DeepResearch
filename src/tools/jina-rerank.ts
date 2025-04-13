@@ -44,6 +44,11 @@ export async function rerankDocuments(
       throw new Error('JINA_API_KEY is not set');
     }
 
+    if (documents.length > 2000) {
+      console.error(`Reranking ${documents.length} documents, which exceeds the recommended limit of 2000. This may lead to performance issues.`);
+      documents = documents.slice(0, 2000);
+    }
+
     const request: JinaRerankRequest = {
       model: 'jina-reranker-v2-base-multilingual',
       query,

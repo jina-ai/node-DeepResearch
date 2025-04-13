@@ -348,7 +348,7 @@ async function executeSearchQueries(
         title: r.title,
         full: r.description,
         chunks: [r.description],
-        chunk_positions: [[0, r.description.length]],
+        chunk_positions: [[0, r.description?.length]],
       }
     });
 
