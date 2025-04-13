@@ -1,4 +1,4 @@
-import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction} from "../types";
+import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction, WebContent} from "../types";
 import {getI18nText, smartMergeStrings} from "./text-tools";
 import {rerankDocuments} from "../tools/jina-rerank";
 import {readUrl} from "../tools/read";
@@ -6,6 +6,7 @@ import {Schemas} from "./schemas";
 import {cherryPick} from "../tools/jina-latechunk";
 import {formatDateBasedOnType} from "./date-tools";
 import {classifyText} from "../tools/jina-classify-spam";
+import {segmentText} from "../tools/segment";
 
 export function normalizeUrl(urlString: string, debug = false, options = {
   removeAnchors: true,
@@ -395,7 +396,17 @@ export async function getLastModified(url: string): Promise<string | undefined> 
   try {
     // Call the API with proper encoding
     const apiUrl = `https://api-beta-datetime.jina.ai?url=${encodeURIComponent(url)}`;
-    const response = await fetch(apiUrl);
+
+    // Create an AbortController with a timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(apiUrl, {
+      signal: controller.signal
+    });
+
+    // Clear the timeout to prevent memory leaks
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`API returned ${response.status}`);
@@ -443,7 +454,8 @@ export async function processURLs(
   visitedURLs: string[],
   badURLs: string[],
   schemaGen: Schemas,
-  question: string
+  question: string,
+  webContents: Record<string, WebContent>
 ): Promise<{ urlResults: any[], success: boolean }> {
   // Skip if no URLs to process
   if (urls.length === 0) {
@@ -491,6 +503,15 @@ export async function processURLs(
         if (!isGoodContent) {
           console.error(`Blocked content ${data.content.length}:`, url, data.content.slice(0, spamDetectLength));
           throw new Error(`Blocked content ${url}`);
+        }
+
+        // add to web contents
+        const {chunks, chunk_positions } = await segmentText(data.content, context)
+        webContents[data.url] = {
+          full: data.content,
+          chunks,
+          chunk_positions,
+          title: data.title
         }
 
         // Add to knowledge base

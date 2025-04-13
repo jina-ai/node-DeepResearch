@@ -2,7 +2,7 @@ import {z} from "zod";
 import {ObjectGeneratorSafe} from "./safe-generator";
 import {EvaluationType, PromptPair} from "../types";
 
-export const MAX_URLS_PER_STEP = 4
+export const MAX_URLS_PER_STEP = 5
 export const MAX_QUERIES_PER_STEP = 5
 export const MAX_REFLECT_PER_STEP = 2
 
@@ -60,7 +60,7 @@ Evaluation: {
 }
 
 export class Schemas {
-  private languageStyle: string = 'formal English';
+  public languageStyle: string = 'formal English';
   public languageCode: string = 'en';
 
 

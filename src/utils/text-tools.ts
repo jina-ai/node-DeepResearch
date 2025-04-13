@@ -4,7 +4,7 @@ import {JSDOM} from 'jsdom';
 import fs from "fs/promises";
 
 
-export function buildMdFromAnswer(answer: AnswerAction) {
+export function buildMdFromAnswer(answer: AnswerAction): string {
   return repairMarkdownFootnotes(answer.answer, answer.references);
 }
 

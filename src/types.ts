@@ -20,11 +20,14 @@ export type SearchAction = BaseAction & {
 };
 
 export type Reference = {
-    exactQuote: string;
-    url: string;
-    title: string;
-    dateTime?: string;
-  }
+  exactQuote: string;
+  url: string;
+  title: string;
+  dateTime?: string;
+  relevanceScore?: number;
+  answerChunk?: string;
+  answerChunkPosition?: number[];
+}
 
 export type AnswerAction = BaseAction & {
   action: "answer";
@@ -64,8 +67,8 @@ export type StepAction = SearchAction | AnswerAction | ReflectAction | VisitActi
 export type EvaluationType = 'definitive' | 'freshness' | 'plurality' | 'attribution' | 'completeness' | 'strict';
 
 export type RepeatEvaluationType = {
-    type: EvaluationType;
-    numEvalsRequired: number;
+  type: EvaluationType;
+  numEvalsRequired: number;
 }
 
 // Following Vercel AI SDK's token counting interface
@@ -189,10 +192,17 @@ export type UnNormalizedSearchSnippet = {
   date?: string
 };
 
-export type SearchSnippet = UnNormalizedSearchSnippet& {
+export type SearchSnippet = UnNormalizedSearchSnippet & {
   url: string;
   description: string;
 };
+
+export type WebContent = {
+  full: string,
+  chunks: string[]
+  chunk_positions: number[][],
+  title: string
+}
 
 export type BoostedSearchSnippet = SearchSnippet & {
   freqBoost: number;
