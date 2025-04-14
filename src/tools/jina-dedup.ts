@@ -5,22 +5,37 @@ import {JINA_API_KEY} from "../config";
 const JINA_API_URL = 'https://api.jina.ai/v1/embeddings';
 const SIMILARITY_THRESHOLD = 0.86; // Adjustable threshold for cosine similarity
 
-const JINA_API_CONFIG = {
-  MODEL: 'jina-embeddings-v3',
-  TASK: 'text-matching',
-  DIMENSIONS: 1024,
-  EMBEDDING_TYPE: 'float',
-  LATE_CHUNKING: false
-} as const;
+interface JinaApiConfig {
+  MODEL: string;
+  TASK?: string;
+  DIMENSIONS: number;
+  EMBEDDING_TYPE: string;
+  LATE_CHUNKING?: boolean;
+}
+
+const JINA_CONFIGS: { [key: string]: JinaApiConfig } = {
+  text: {
+    MODEL: 'jina-embeddings-v3',
+    TASK: 'text-matching',
+    DIMENSIONS: 1024,
+    EMBEDDING_TYPE: 'float',
+    LATE_CHUNKING: false,
+  },
+  image: {
+    MODEL: 'jina-clip-v2',
+    DIMENSIONS: 512,
+    EMBEDDING_TYPE: 'float',
+  },
+};
 
 // Types for Jina API
 interface JinaEmbeddingRequest {
   model: string;
-  task: string;
-  late_chunking: boolean;
+  task?: string;
+  late_chunking?: boolean;
   dimensions: number;
   embedding_type: string;
-  input: string[];
+  input: Array<{ image?: string; text?: string } | string>;
 }
 
 interface JinaEmbeddingResponse {
@@ -47,18 +62,23 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
 }
 
 // Get embeddings for all queries in one batch
-async function getEmbeddings(queries: string[]): Promise<{ embeddings: number[][], tokens: number }> {
+async function getEmbeddings(queries: string[], type: 'text' | 'image'): Promise<{ embeddings: number[][], tokens: number }> {
   if (!JINA_API_KEY) {
     throw new Error('JINA_API_KEY is not set');
   }
 
+  const config = JINA_CONFIGS[type];
+  if (!config) {
+    throw new Error(`Invalid embedding type: ${type}`);
+  }
+
   const request: JinaEmbeddingRequest = {
-    model: JINA_API_CONFIG.MODEL,
-    task: JINA_API_CONFIG.TASK,
-    late_chunking: JINA_API_CONFIG.LATE_CHUNKING,
-    dimensions: JINA_API_CONFIG.DIMENSIONS,
-    embedding_type: JINA_API_CONFIG.EMBEDDING_TYPE,
-    input: queries
+    model: config.MODEL,
+    task: config.TASK,
+    late_chunking: config.LATE_CHUNKING,
+    dimensions: config.DIMENSIONS,
+    embedding_type: config.EMBEDDING_TYPE,
+    input: type === 'text' ? queries : queries.map(query => ({ image: query })) ,
   };
 
   try {
@@ -118,7 +138,7 @@ export async function dedupQueries(
 
     // Get embeddings for all queries in one batch
     const allQueries = [...newQueries, ...existingQueries];
-    const {embeddings: allEmbeddings, tokens} = await getEmbeddings(allQueries);
+    const {embeddings: allEmbeddings, tokens} = await getEmbeddings(allQueries, 'text');
 
     // If embeddings is empty (due to 402 error), return all new queries
     if (!allEmbeddings.length) {
@@ -181,6 +201,89 @@ export async function dedupQueries(
     // return all new queries if there is an error
     return {
       unique_queries: newQueries,
+    };
+  }
+}
+
+
+export async function dedupImages(
+  newImages: string[], // Array of base64 image strings
+  existingImages: string[], // Array of base64 image strings
+  tracker?: TokenTracker
+): Promise<{ unique_images: string[] }> {
+  try {
+    // Quick return for single new image with no existing images
+    if (newImages.length === 1 && existingImages.length === 0) {
+      return {
+        unique_images: newImages,
+      };
+    }
+
+    // Get embeddings for all images in one batch
+    const allImages = [...newImages, ...existingImages];
+    const { embeddings: allEmbeddings, tokens } = await getEmbeddings(allImages, 'image');
+
+    // If embeddings is empty (due to 402 error), return all new images
+    if (!allEmbeddings.length) {
+      return {
+        unique_images: newImages,
+      };
+    }
+
+    // Split embeddings back into new and existing
+    const newEmbeddings = allEmbeddings.slice(0, newImages.length);
+    const existingEmbeddings = allEmbeddings.slice(newImages.length);
+
+    const uniqueImages: string[] = [];
+    const usedIndices = new Set<number>();
+
+    // Compare each new image against existing images and already accepted images
+    for (let i = 0; i < newImages.length; i++) {
+      let isUnique = true;
+
+      // Check against existing images
+      for (let j = 0; j < existingImages.length; j++) {
+        const similarity = cosineSimilarity(newEmbeddings[i], existingEmbeddings[j]);
+        if (similarity >= SIMILARITY_THRESHOLD) {
+          isUnique = false;
+          break;
+        }
+      }
+
+      // Check against already accepted images
+      if (isUnique) {
+        for (const usedIndex of usedIndices) {
+          const similarity = cosineSimilarity(newEmbeddings[i], newEmbeddings[usedIndex]);
+          if (similarity >= SIMILARITY_THRESHOLD) {
+            isUnique = false;
+            break;
+          }
+        }
+      }
+
+      // Add to unique images if passed all checks
+      if (isUnique) {
+        uniqueImages.push(newImages[i]);
+        usedIndices.add(i);
+      }
+    }
+
+    // Track token usage (may not be relevant for images)
+    (tracker || new TokenTracker()).trackUsage('dedup_images', {
+        promptTokens: 0,
+        completionTokens: tokens,
+        totalTokens: tokens
+    });
+
+    return {
+      unique_images: uniqueImages,
+    };
+  } catch (error) {
+    console.error('Error in image deduplication analysis:', error);
+
+    // return all new images if there is an error
+    return {
+      unique_images: newImages,
     };
   }
 }

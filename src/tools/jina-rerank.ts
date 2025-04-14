@@ -18,7 +18,7 @@ export interface JinaRerankResponse {
     index: number;
     document: {
       text: string;
-      bytes: string;
+      image: string;
     };
     relevance_score: number;
   }>;
@@ -88,21 +88,21 @@ export async function rerankImages(
   documents: Record<string, string>[],
   tracker?: TokenTracker,
   top_n?: number,
-): Promise<{ results: Array<{index: number, relevance_score: number, document: {bytes: string}}> }> {
+): Promise<{ results: Array<{index: number, relevance_score: number, document: {image: string}}> }> {
   try {
     if (!JINA_API_KEY) {
       throw new Error('JINA_API_KEY is not set');
     }
 
     const request: JinaRerankRequest = {
-      model: 'jina-reranker-v3',
+      model: 'jina-reranker-m0',
       query,
       top_n: top_n ?? documents.length,
       documents
     };
 
     const response = await axios.post<JinaRerankResponse>(
-      'https://jina-reranker-v3-dev-366646433082.us-central1.run.app/v1/rerank',
+      JINA_API_URL,
       request,
       {
         headers: {

@@ -25,7 +25,8 @@ export function readUrl(url: string, withAllLinks?: boolean, tracker?: TokenTrac
       headers['X-With-Links-Summary'] = 'all'
     }
     if (withAllImages) {
-      headers['X-With-Images-Summary'] = 'all'
+      headers['X-With-Images-Summary'] = 'true'
+      headers['X-With-Generated-Alt'] = 'true'
     } else {
       headers['X-Retain-Images'] = 'none'
     }
