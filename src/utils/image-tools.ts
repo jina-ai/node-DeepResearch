@@ -2,6 +2,7 @@ import canvas from '@napi-rs/canvas';
 import { ImageObject } from '../types';
 import { TokenTracker } from './token-tracker';
 import { rerankImages } from '../tools/jina-rerank';
+import { dedupImages } from '../tools/jina-dedup';
 export type { Canvas, Image } from '@napi-rs/canvas';
 
 export const downloadFile = async (uri: string) => {
@@ -100,7 +101,7 @@ export const processImage = async (url: string): Promise<ImageObject | undefined
       return;
     }
 
-    const canvas = fitImageToSquareBox(img, 256);
+    const canvas = fitImageToSquareBox(img, 512);
     if (!canvas) {
       console.error('Image size is too small:', url);
       return;
@@ -126,7 +127,7 @@ interface RankResult {
   relevance_score: number;
 }
 
-export const rankImages = async (
+export const rankImages1 = async (
   images: ImageObject[],
   query: string,
   tracker: TokenTracker,
@@ -135,8 +136,9 @@ export const rankImages = async (
   if (images.length === 0) return [];
 
   const originalImageBytes = images.map((i) => ({
-    bytes: i.data.split(',')[1],
+    image: i.data.split(',')[1],
   }));
+  console.log('Original Image :', images.map((i) => i.url));
 
   const answerParagraphs = answer
     ?.split('\n\n\n\n')[0]
@@ -148,12 +150,12 @@ export const rankImages = async (
       await rerankImages(query, originalImageBytes, tracker, 20)
     ).results;
 
-    console.log('First Round Results:', JSON.stringify(firstRoundRankResults));
+    // console.log('First Round Results:', JSON.stringify(firstRoundRankResults));
 
     if (firstRoundRankResults.length === 0) return [];
 
     const relevantFirstRoundResults = firstRoundRankResults.filter(
-      (r) => r.relevance_score > 0.1
+      (r) => r.relevance_score > 0.5
     );
 
     if (answerParagraphs.length === 0) {
@@ -161,13 +163,13 @@ export const rankImages = async (
     }
 
     const intermediateRankedImages = relevantFirstRoundResults.map((r) => ({
-      bytes: originalImageBytes[r.index].bytes,
+      image: originalImageBytes[r.index].image,
       originalIndex: r.index,
     }));
 
     const secondRoundRankResults: RankResult[][] = await Promise.all(
       answerParagraphs.map(async (content) =>
-        (await rerankImages(content, intermediateRankedImages.map((i) => ({ bytes: i.bytes })), tracker, 3)).results
+        (await rerankImages(content, intermediateRankedImages.map((i) => ({ image: i.image })), tracker, 5)).results
       )
     );
 
@@ -176,9 +178,9 @@ export const rankImages = async (
       .filter((r) => r.relevance_score > 0.5)
       .sort((a, b) => b.relevance_score - a.relevance_score);
 
-    console.log('Final Ranked Results:', JSON.stringify(finalRankedResults));
+    console.log('Final Ranked Results:', finalRankedResults.length);
 
-    const result: ImageObject[] = [];
+    let result: ImageObject[] = [];
 
     finalRankedResults.forEach((img) => {
       const originalImageIndex = intermediateRankedImages[img.index].originalIndex;
@@ -188,6 +190,10 @@ export const rankImages = async (
       }
     });
 
+    console.log('Final Results before filter:', result.length);
+    const imagesToDedup = result.map((i) => i.data.split(',')[1]);
+    const dedupedImages = (await dedupImages(imagesToDedup, [], tracker)).unique_images;
+    result = result.filter(i => dedupedImages.includes(i.data.split(',')[1]));
     console.log('Final Results:', result.length, JSON.stringify(result.map((i) => i.url)));
     return result;
   } catch (error) {
@@ -208,7 +214,7 @@ export const rankImages2 = async (
 
   try {
     const originalImageBytes = images.map((i) => ({
-      bytes: i.data.split(',')[1],
+      image: i.data.split(',')[1],
     }));
 
     const answerParagraphs = answer
@@ -221,14 +227,14 @@ export const rankImages2 = async (
     if (firstRoundResults.length === 0) return []; 
 
     const selectedImages = firstRoundResults.map((r) => ({
-      bytes: originalImageBytes[r.index].bytes,
+      image: originalImageBytes[r.index].image,
       originalIndex: r.index,
       queryScore: r.relevance_score,
     }));
 
     const paragraphScores: number[][] = await Promise.all(
       answerParagraphs.map(async (paragraph) =>
-        (await rerankImages(paragraph, selectedImages.map((i) => ({ bytes: i.bytes })), tracker, topN)).results.sort((a,b) => a.index - b.index).map((r) => r.relevance_score)
+        (await rerankImages(paragraph, selectedImages.map((i) => ({ image: i.image })), tracker, topN)).results.sort((a,b) => a.index - b.index).map((r) => r.relevance_score)
       )
     );
 
@@ -243,12 +249,121 @@ export const rankImages2 = async (
       return { index: selectedImage.originalIndex, finalScore };
     });
 
-    const rankedImages = imageScores.filter((i) => i.finalScore > 0.5).sort((a, b) => b.finalScore - a.finalScore)
+    let rankedImages = imageScores.filter((i) => i.finalScore > 0.5).sort((a, b) => b.finalScore - a.finalScore)
+
+    const imagesToDedup = rankedImages.map((i) => originalImageBytes[i.index].image);
+    const dedupedImages = (await dedupImages(imagesToDedup, [], tracker)).unique_images;
+    rankedImages = rankedImages.filter(i => dedupedImages.includes(originalImageBytes[i.index].image));
 
     console.log('Ranked Images:', JSON.stringify(rankedImages), JSON.stringify(imageScores));
     return rankedImages.slice(0, 5).map((rankedImage) => images[rankedImage.index]);
   } catch (error) {
     console.error('Error in rankImages:', error);
+    return [];
+  }
+}
+
+export const rankImages = async (
+  images: ImageObject[],
+  query: string,
+  tracker: TokenTracker,
+  answer?: string
+): Promise<ImageObject[]> => {
+  if (images.length === 0) return [];
+
+  const originalImageBytes = images.map((i) => ({
+    image: i.data.split(',')[1],
+  }));
+  console.log('Original Image :', images.map((i) => i.url));
+
+  const answerParagraphs = answer
+    ?.split('\n\n\n\n')[0]
+    .split('\n\n')
+    .filter((i) => i.trim().length > 30 && !i.trim().startsWith('```')) || [];
+
+  try {
+    // const firstRoundRankResults: RankResult[] = (
+    //   await rerankImages(answer || query, originalImageBytes, tracker, 20)
+    // ).results;
+
+    // console.log('First Round Results:', JSON.stringify(firstRoundRankResults));
+
+    // if (firstRoundRankResults.length === 0) return [];
+
+    // const relevantFirstRoundResults = firstRoundRankResults.filter(
+    //   (r) => r.relevance_score > 0.1
+    // );
+
+    // if (answerParagraphs.length === 0) {
+      // return relevantFirstRoundResults.map((r) => images[r.index]).slice(0, 10);
+    // }
+
+    // const intermediateRankedImages = relevantFirstRoundResults.map((r) => ({
+    //   image: originalImageBytes[r.index].image,
+    //   originalIndex: r.index,
+    // }));
+
+    const answerRankResults: RankResult[][] = await Promise.all(
+      answerParagraphs.map(async (content) =>
+        (await rerankImages(content, originalImageBytes, tracker, 5)).results
+      )
+    );
+
+    const intermediateRankedImages: any[] = [];
+    answerRankResults.forEach((r, index) => {
+      intermediateRankedImages[index] = r.map((i) => ({
+        image: originalImageBytes[i.index].image,
+        originalIndex: i.index,
+        relevance_score: i.relevance_score,
+      }));
+    });
+
+    const queryRankResults: RankResult[][] = await Promise.all(
+      intermediateRankedImages.map(async (results) =>
+        (await rerankImages(query, results.map((i: any) => ({ image: i.image })), tracker)).results
+      )
+    );
+
+    const finalResults = queryRankResults.flatMap((r) => r)
+      .filter((r) => r.relevance_score > 0.8)
+      .sort((a, b) => b.relevance_score - a.relevance_score);
+    console.log('Final Ranked Results:', JSON.stringify(finalResults));
+
+    const result: ImageObject[] = [];
+    finalResults.forEach((img) => {
+      const originalImageIndex = intermediateRankedImages[img.index].originalIndex;
+      const item = images[originalImageIndex];
+      if (!result.includes(item)) {
+        result.push(item);
+      }
+    });
+    // const imagesToDedup = result.map((i) => i.data.split(',')[1]);
+
+
+
+
+    // const secondRoundRankResults = (await rerankImages(query, intermediateRankedImages.map((i) => ({ image: i.image })), tracker)).results;
+
+    // const finalRankedResults: RankResult[] = secondRoundRankResults.flatMap((r) => r)
+    //   .filter((r) => r.relevance_score > 0.5)
+    //   .sort((a, b) => b.relevance_score - a.relevance_score);
+
+    // console.log('Final Ranked Results:', JSON.stringify(secondRoundRankResults));
+    // const result: ImageObject[] = [];
+    // const finalRankedResults = secondRoundRankResults.filter((r) => r.relevance_score > 0.1);
+
+    // finalRankedResults.forEach((img) => {
+    //   const originalImageIndex = intermediateRankedImages[img.index].originalIndex;
+    //   const item = images[originalImageIndex];
+    //   if (!result.includes(item)) {
+    //     result.push(item);
+    //   }
+    // });
+
+    console.log('Final Results:', result.length, JSON.stringify(result.map((i) => i.url)));
+    return result;
+  } catch (error) {
+    console.error('Error in getRankedImages:', error);
     return [];
   }
 }
