@@ -523,13 +523,13 @@ export async function processURLs(
         // Process images
         const imageUrls = Object.values(data.images || {});
         imageUrls.forEach(async (url) => {
-          const imageObj = await processImage(url);
-          if (imageObj) {
+          const imageUrl = await processImage(url);
+          if (imageUrl) {
             context.actionTracker.trackAction({
               thisStep: {
                 action: 'visit',
                 think: '',
-                image: imageObj,
+                image: imageUrl,
               } as VisitAction
             });
           }
