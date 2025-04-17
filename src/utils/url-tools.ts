@@ -1,4 +1,4 @@
-import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction} from "../types";
+import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction, WebContent} from "../types";
 import {getI18nText, smartMergeStrings} from "./text-tools";
 import {rerankDocuments} from "../tools/jina-rerank";
 import {readUrl} from "../tools/read";
@@ -7,6 +7,7 @@ import {cherryPick} from "../tools/jina-latechunk";
 import {formatDateBasedOnType} from "./date-tools";
 import {classifyText} from "../tools/jina-classify-spam";
 import { processImage } from "./image-tools";
+import {segmentText} from "../tools/segment";
 
 export function normalizeUrl(urlString: string, debug = false, options = {
   removeAnchors: true,
@@ -22,8 +23,8 @@ export function normalizeUrl(urlString: string, debug = false, options = {
       throw new Error('Empty URL');
     }
 
-    if (urlString.startsWith('https://google.com/') || urlString.startsWith('https://www.google.com')) {
-      throw new Error('Google search link');
+    if (urlString.startsWith('https://google.com/') || urlString.startsWith('https://www.google.com') || urlString.startsWith('https://baidu.com/s?')) {
+      throw new Error('Google/baidu search link');
     }
 
     if (urlString.includes('example.com')) {
@@ -332,8 +333,8 @@ export const addToAllURLs = (r: SearchSnippet, allURLs: Record<string, SearchSni
   }
 }
 
-export const weightedURLToString = (allURLs: BoostedSearchSnippet[], maxURLs = 70) => {
-  if (!allURLs || allURLs.length === 0) return '';
+export const sortSelectURLs = (allURLs: BoostedSearchSnippet[], maxURLs = 70): any[] => {
+  if (!allURLs || allURLs.length === 0) return [];
 
   return (allURLs)
     .map(r => {
@@ -346,9 +347,7 @@ export const weightedURLToString = (allURLs: BoostedSearchSnippet[], maxURLs = 7
     })
     .filter(item => item.merged !== '' && item.merged !== undefined && item.merged !== null)
     .sort((a, b) => (b.score || 0) - (a.score || 0))
-    .slice(0, maxURLs)
-    .map(item => `  + weight: ${item.score.toFixed(2)} "${item.url}": "${item.merged}"`)
-    .join('\n');
+    .slice(0, maxURLs);
 }
 
 
@@ -398,7 +397,17 @@ export async function getLastModified(url: string): Promise<string | undefined> 
   try {
     // Call the API with proper encoding
     const apiUrl = `https://api-beta-datetime.jina.ai?url=${encodeURIComponent(url)}`;
-    const response = await fetch(apiUrl);
+
+    // Create an AbortController with a timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(apiUrl, {
+      signal: controller.signal
+    });
+
+    // Clear the timeout to prevent memory leaks
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`API returned ${response.status}`);
@@ -447,6 +456,7 @@ export async function processURLs(
   badURLs: string[],
   schemaGen: Schemas,
   question: string,
+  webContents: Record<string, WebContent>
 ): Promise<{ urlResults: any[], success: boolean }> {
   // Skip if no URLs to process
   if (urls.length === 0) {
@@ -494,6 +504,15 @@ export async function processURLs(
         if (!isGoodContent) {
           console.error(`Blocked content ${data.content.length}:`, url, data.content.slice(0, spamDetectLength));
           throw new Error(`Blocked content ${url}`);
+        }
+
+        // add to web contents
+        const {chunks, chunk_positions } = await segmentText(data.content, context)
+        webContents[data.url] = {
+          full: data.content,
+          chunks,
+          chunk_positions,
+          title: data.title
         }
 
         // Add to knowledge base
@@ -639,4 +658,91 @@ export function fixBadURLMdLinks(mdContent: string, allURLs: Record<string, Sear
       return match;
     }
   });
+}
+
+export function extractUrlsWithDescription(text: string, contextWindowSize: number = 50): SearchSnippet[] {
+  // Using a more precise regex for URL detection that works with multilingual text
+  // This matches URLs starting with http:// or https:// but avoids capturing trailing punctuation
+  const urlPattern = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
+
+  // Find all matches
+  const matches: Array<{url: string, index: number, length: number}> = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = urlPattern.exec(text)) !== null) {
+    let url = match[0];
+    let length = url.length;
+
+    // Clean trailing punctuation (period, comma, etc.)
+    if (/[.,;:!?)]$/.test(url)) {
+      url = url.substring(0, url.length - 1);
+      length = url.length;
+      // Adjust lastIndex to avoid infinite loop with zero-width matches
+      urlPattern.lastIndex = match.index + length;
+    }
+
+    matches.push({
+      url,
+      index: match.index,
+      length
+    });
+  }
+
+  // If no URLs found, return empty array
+  if (matches.length === 0) {
+    return [];
+  }
+
+  // Extract context for each URL
+  const results: SearchSnippet[] = [];
+
+  for (let i = 0; i < matches.length; i++) {
+    const { url, index, length } = matches[i];
+
+    // Calculate boundaries for context
+    let startPos = Math.max(0, index - contextWindowSize);
+    let endPos = Math.min(text.length, index + length + contextWindowSize);
+
+    // Adjust boundaries to avoid overlapping with other URLs
+    if (i > 0) {
+      const prevUrl = matches[i-1];
+      if (startPos < prevUrl.index + prevUrl.length) {
+        startPos = prevUrl.index + prevUrl.length;
+      }
+    }
+
+    if (i < matches.length - 1) {
+      const nextUrl = matches[i+1];
+      if (endPos > nextUrl.index) {
+        endPos = nextUrl.index;
+      }
+    }
+
+    // Extract context
+    const beforeText = text.substring(startPos, index);
+    const afterText = text.substring(index + length, endPos);
+
+    // Combine into description
+    let description = '';
+    if (beforeText && afterText) {
+      description = `${beforeText.trim()} ... ${afterText.trim()}`;
+    } else if (beforeText) {
+      description = beforeText.trim();
+    } else if (afterText) {
+      description = afterText.trim();
+    } else {
+      description = 'No context available';
+    }
+
+    // Clean up description
+    description = description.replace(/\s+/g, ' ').trim();
+
+    results.push({
+      url,
+      description,
+      title: '' // Maintaining the title field as required by SearchSnippet interface
+    });
+  }
+
+  return results;
 }

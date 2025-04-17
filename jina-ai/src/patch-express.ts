@@ -99,7 +99,7 @@ export const jinaAiMiddleware = (req: Request, res: Response, next: NextFunction
                 rateLimitPolicy = authDto.getRateLimits(appName) || [
                     parseInt(user.metadata?.speed_level) >= 2 ?
                         RateLimitDesc.from({
-                            occurrence: 30,
+                            occurrence: 100,
                             periodSeconds: 60
                         }) :
                         RateLimitDesc.from({

@@ -7,7 +7,8 @@
     "late_chunk": "Content of ${url} is too long, let me cherry-pick the relevant parts.",
     "final_answer": "Let me finalize the answer.",
     "blocked_content": "Hmm...the content of ${url} doesn't look right, I might be blocked.",
-    "hostnames_no_results": "Can't find any results from ${hostnames}."
+    "hostnames_no_results": "Can't find any results from ${hostnames}.",
+    "cross_reference": "Let me cross-reference the information from the web to verify the answer."
   },
   "zh-CN": {
     "eval_first": "等等，让我先自己评估一下答案。",
@@ -17,7 +18,8 @@
     "late_chunk": "网页 ${url} 内容太长，我正在筛选精华部分。",
     "final_answer": "我来整理一下答案。",
     "blocked_content": "额…这个 ${url} 的内容不太对啊，我是不是被屏蔽了啊。",
-    "hostnames_no_results": "额… ${hostnames} 找不到什么结果啊。"
+    "hostnames_no_results": "额… ${hostnames} 找不到什么结果啊。",
+    "cross_reference": "让我交叉验证一下网页上的信息来验证答案。"
   },
   "zh-TW": {
     "eval_first": "等等，讓我先評估一下答案。",
@@ -27,7 +29,8 @@
     "late_chunk": "網頁 ${url} 內容太長，我正在挑選相關部分。",
     "final_answer": "我來整理一下答案。",
     "blocked_content": "咦...奇怪了，${url} 好像把我擋在門外了。有够麻烦！",
-    "hostnames_no_results": "咦... ${hostnames} 找不到什么结果。"
+    "hostnames_no_results": "咦... ${hostnames} 找不到什么结果。",
+    "cross_reference": "讓我交叉驗證一下網頁上的信息來驗證答案。"
   },
   "ja": {
     "eval_first": "ちょっと待って、まず答えを評価します。",
@@ -37,7 +40,8 @@
     "late_chunk": "${url} のコンテンツが長すぎるため、関連部分を選択します。",
     "final_answer": "答えをまとめます。",
     "blocked_content": "あれ？${url}にアクセスできないみたいです。壁にぶつかってしまいました。申し訳ありません。",
-    "hostnames_no_results": "${hostnames} から結果が見つかりません。"
+    "hostnames_no_results": "${hostnames} から結果が見つかりません。",
+    "cross_reference": "ウェブ上の情報をクロスリファレンスして、答えを確認します。"
   },
   "ko": {
     "eval_first": "잠시만요, 먼저 답변을 평가해 보겠습니다.",
@@ -47,7 +51,8 @@
     "late_chunk": "${url} 의 콘텐츠가 너무 길어, 관련 부분을 선택하겠습니다.",
     "final_answer": "답변을 마무리하겠습니다.",
     "blocked_content": "어라? ${url}에서 문전박대를 당했네요. 참 황당하네요!",
-    "hostnames_no_results": "${hostnames} 에서 결과를 찾을 수 없습니다."
+    "hostnames_no_results": "${hostnames} 에서 결과를 찾을 수 없습니다.",
+    "cross_reference": "웹에서 정보를 교차 검증하여 답변을 확인하겠습니다."
   },
   "fr": {
     "eval_first": "Un instant, je vais d'abord évaluer la réponse.",
@@ -57,7 +62,8 @@
     "late_chunk": "Le contenu de ${url} est trop long, je vais sélectionner les parties pertinentes.",
     "final_answer": "Je vais finaliser la réponse.",
     "blocked_content": "Zut alors ! ${url} me met à la porte. C'est la galère !",
-    "hostnames_no_results": "Aucun résultat trouvé sur ${hostnames}."
+    "hostnames_no_results": "Aucun résultat trouvé sur ${hostnames}.",
+    "cross_reference": "Je vais croiser les informations sur le web pour vérifier la réponse."
   },
   "de": {
     "eval_first": "Einen Moment, ich werde die Antwort zuerst evaluieren.",
@@ -67,7 +73,8 @@
     "late_chunk": "Der Inhalt von ${url} ist zu lang, ich werde die relevanten Teile auswählen.",
     "final_answer": "Ich werde die Antwort abschließen.",
     "blocked_content": "Mist! ${url} lässt mich nicht rein.",
-    "hostnames_no_results": "Keine Ergebnisse von ${hostnames} gefunden."
+    "hostnames_no_results": "Keine Ergebnisse von ${hostnames} gefunden.",
+    "cross_reference": "Ich werde die Informationen im Web abgleichen, um die Antwort zu überprüfen."
   },
   "es": {
     "eval_first": "Un momento, voy a evaluar la respuesta primero.",
@@ -87,7 +94,8 @@
     "late_chunk": "Il contenuto di ${url} è troppo lungo, selezionerò le parti rilevanti.",
     "final_answer": "Finalizzerò la risposta.",
     "blocked_content": "Mannaggia! Sono bloccato da ${url}, non è bello!",
-    "hostnames_no_results": "Nessun risultato trovato da ${hostnames}."
+    "hostnames_no_results": "Nessun risultato trovato da ${hostnames}.",
+    "cross_reference": "Incrocerò le informazioni sul web per verificare la risposta."
   },
   "pt": {
     "eval_first": "Um momento, vou avaliar a resposta primeiro.",
@@ -97,7 +105,8 @@
     "late_chunk": "O conteúdo de ${url} é muito longo, vou selecionar as partes relevantes.",
     "final_answer": "Vou finalizar a resposta.",
     "blocked_content": "Ah não! Estou bloqueado por ${url}, não é legal!",
-    "hostnames_no_results": "Nenhum resultado encontrado em ${hostnames}."
+    "hostnames_no_results": "Nenhum resultado encontrado em ${hostnames}.",
+    "cross_reference": "Vou cruzar as informações da web para verificar a resposta."
   },
   "ru": {
     "eval_first": "Подождите, я сначала оценю ответ.",
@@ -107,7 +116,8 @@
     "late_chunk": "Содержимое ${url} слишком длинное, я выберу только значимые части.",
     "final_answer": "Дайте мне завершить ответ.",
     "blocked_content": "Ой! Меня заблокировал ${url}, не круто!",
-    "hostnames_no_results": "Ничего не найдено на ${hostnames}."
+    "hostnames_no_results": "Ничего не найдено на ${hostnames}.",
+    "cross_reference": "Дайте мне сопоставить информацию из сети, чтобы проверить ответ."
   },
   "ar": {
     "eval_first": "لكن انتظر، دعني أقوم بتقييم الإجابة أولاً.",
@@ -116,7 +126,8 @@
     "read_for_verify": "دعني أحضر محتوى المصدر للتحقق من الإجابة.",
     "late_chunk": "محتوى ${url} طويل جدًا، سأختار الأجزاء ذات الصلة.",
     "blocked_content": "أوه لا! أنا محظور من ${url}، ليس جيدًا!",
-    "hostnames_no_results": "لا يمكن العثور على أي نتائج من ${hostnames}."
+    "hostnames_no_results": "لا يمكن العثور على أي نتائج من ${hostnames}.",
+    "cross_reference": "دعني أقوم بمقارنة المعلومات من الويب للتحقق من الإجابة."
   },
   "nl": {
     "eval_first": "Een moment, ik zal het antwoord eerst evalueren.",
@@ -126,7 +137,8 @@
     "late_chunk": "De inhoud van ${url} is te lang, ik zal de relevante delen selecteren.",
     "final_answer": "Ik zal het antwoord afronden.",
     "blocked_content": "Verdorie! Ik word geblokkeerd door ${url}.",
-    "hostnames_no_results": "Geen resultaten gevonden van ${hostnames}."
+    "hostnames_no_results": "Geen resultaten gevonden van ${hostnames}.",
+    "cross_reference": "Ik zal de informatie op het web kruisverwijzen om het antwoord te verifiëren."
   },
   "zh": {
     "eval_first": "等等，让我先评估一下答案。",
@@ -136,6 +148,7 @@
     "late_chunk": "网页 ${url} 内容太长，我正在筛选精华部分。",
     "final_answer": "我来整理一下答案。",
     "blocked_content": "额…这个内容不太对啊，我感觉被 ${url} 屏蔽了。",
-    "hostnames_no_results": "额… ${hostnames} 找不到什么结果啊。"
+    "hostnames_no_results": "额… ${hostnames} 找不到什么结果啊。",
+    "cross_reference": "让我交叉验证一下网页上的信息来验证答案。"
   }
 }

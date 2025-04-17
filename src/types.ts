@@ -20,11 +20,14 @@ export type SearchAction = BaseAction & {
 };
 
 export type Reference = {
-    exactQuote: string;
-    url: string;
-    title: string;
-    dateTime?: string;
-  }
+  exactQuote: string;
+  url: string;
+  title: string;
+  dateTime?: string;
+  relevanceScore?: number;
+  answerChunk?: string;
+  answerChunkPosition?: number[];
+}
 
 export type AnswerAction = BaseAction & {
   action: "answer";
@@ -51,7 +54,7 @@ export type ReflectAction = BaseAction & {
 
 export type VisitAction = BaseAction & {
   action: "visit";
-  URLTargets: string[];
+  URLTargets: number[] | string[];
   image?: string;
 };
 
@@ -65,8 +68,8 @@ export type StepAction = SearchAction | AnswerAction | ReflectAction | VisitActi
 export type EvaluationType = 'definitive' | 'freshness' | 'plurality' | 'attribution' | 'completeness' | 'strict';
 
 export type RepeatEvaluationType = {
-    type: EvaluationType;
-    numEvalsRequired: number;
+  type: EvaluationType;
+  numEvalsRequired: number;
 }
 
 export type ImageObject = {
@@ -198,10 +201,17 @@ export type UnNormalizedSearchSnippet = {
   date?: string
 };
 
-export type SearchSnippet = UnNormalizedSearchSnippet& {
+export type SearchSnippet = UnNormalizedSearchSnippet & {
   url: string;
   description: string;
 };
+
+export type WebContent = {
+  full: string,
+  chunks: string[]
+  chunk_positions: number[][],
+  title: string
+}
 
 export type BoostedSearchSnippet = SearchSnippet & {
   freqBoost: number;
@@ -243,6 +253,9 @@ export interface ChatCompletionRequest {
   boost_hostnames?: string[];
   bad_hostnames?: string[];
   only_hostnames?: string[];
+
+  max_annotations?: number;
+  min_annotation_relevance?: number;
 }
 
 export interface URLAnnotation {
@@ -312,3 +325,31 @@ export interface TrackerContext {
   actionTracker: ActionTracker;
 }
 
+
+
+
+
+// Interface definitions for Jina API
+export interface JinaEmbeddingRequest {
+  model: string;
+  task: string;
+  late_chunking?: boolean;
+  dimensions?: number;
+  embedding_type?: string;
+  input: string[];
+  truncate?: boolean;
+}
+
+export interface JinaEmbeddingResponse {
+  model: string;
+  object: string;
+  usage: {
+    total_tokens: number;
+    prompt_tokens: number;
+  };
+  data: Array<{
+    object: string;
+    index: number;
+    embedding: number[];
+  }>;
+}

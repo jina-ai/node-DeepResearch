@@ -27,52 +27,74 @@ export interface JinaRerankResponse {
   };
 }
 
-/**
- * Reranks a list of documents based on relevance to a query
- * @param query The query to rank documents against
- * @param documents Array of documents to be ranked
- * @param topN Number of top results to return
- * @param tracker Optional token tracker for usage monitoring
- * @returns Array of reranked documents with their scores
- */
 export async function rerankDocuments(
   query: string,
   documents: string[],
-  tracker?: TokenTracker
-): Promise<{ results: Array<{index: number, relevance_score: number, document: {text: string}}> }> {
+  tracker?: TokenTracker,
+  batchSize = 2000
+): Promise<{ results: Array<{ index: number, relevance_score: number, document: { text: string } }> }> {
   try {
     if (!JINA_API_KEY) {
       throw new Error('JINA_API_KEY is not set');
     }
 
-    const request: JinaRerankRequest = {
-      model: 'jina-reranker-v2-base-multilingual',
-      query,
-      top_n: documents.length,
-      documents
-    };
+    // No need to slice - we'll process all documents in batches
+    const batches: string[][] = [];
+    for (let i = 0; i < documents.length; i += batchSize) {
+      batches.push(documents.slice(i, i + batchSize));
+    }
 
-    const response = await axios.post<JinaRerankResponse>(
-      JINA_API_URL,
-      request,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${JINA_API_KEY}`
-        }
-      }
+    console.log(`Rerank ${documents.length} documents in ${batches.length} batches of up to ${batchSize} each`);
+
+    // Process all batches in parallel
+    const batchResults = await Promise.all(
+      batches.map(async (batchDocuments, batchIndex) => {
+        const startIdx = batchIndex * batchSize;
+
+        const request: JinaRerankRequest = {
+          model: 'jina-reranker-v2-base-multilingual',
+          query,
+          top_n: batchDocuments.length,
+          documents: batchDocuments
+        };
+
+        const response = await axios.post<JinaRerankResponse>(
+          JINA_API_URL,
+          request,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${JINA_API_KEY}`
+            }
+          }
+        );
+
+        // Track token usage from this batch
+        (tracker || new TokenTracker()).trackUsage('rerank', {
+          promptTokens: response.data.usage.total_tokens,
+          completionTokens: 0,
+          totalTokens: response.data.usage.total_tokens
+        });
+
+        // Add the original document index to each result
+        return response.data.results.map(result => ({
+          ...result,
+          originalIndex: startIdx + result.index // Map back to the original index
+        }));
+      })
     );
 
-    // Track token usage from the API
-    (tracker || new TokenTracker()).trackUsage('rerank', {
-      promptTokens: response.data.usage.total_tokens,
-      completionTokens: 0,
-      totalTokens: response.data.usage.total_tokens
-    });
+    // Flatten and sort all results by relevance score
+    const allResults = batchResults.flat().sort((a, b) => b.relevance_score - a.relevance_score);
 
-    return {
-      results: response.data.results
-    };
+    // Keep the original document indices in the results
+    const finalResults = allResults.map(result => ({
+      index: result.originalIndex,       // Original document index
+      relevance_score: result.relevance_score,
+      document: result.document
+    }));
+
+    return {results: finalResults};
   } catch (error) {
     console.error('Error in reranking documents:', error);
 
