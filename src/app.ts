@@ -502,7 +502,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       // Add content to queue for both thinking steps and final answer
       if (step.action === 'visit') {
         // emit every url in the visit action in url field
-        ((step as VisitAction).URLTargets as string[]).forEach((url) => {
+        ((step as VisitAction).URLTargets as string[])?.forEach((url) => {
           const chunk: ChatCompletionChunk = {
             id: requestId,
             object: 'chat.completion.chunk',
@@ -637,7 +637,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs,
         readURLs,
         numURLs: allURLs.length,
-        testImages: testImages,
+        testImages,
       };
       res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
       res.end();
@@ -663,7 +663,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs,
         readURLs,
         numURLs: allURLs.length,
-        testImages: testImages,
+        testImages,
       };
 
       // Log final response (excluding full content for brevity)

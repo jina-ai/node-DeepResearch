@@ -9,16 +9,15 @@ interface JinaRerankRequest {
   model: string;
   query: string;
   top_n: number;
-  documents: string[] | Record<string, string>[];
+  documents: string[];
 }
 
-export interface JinaRerankResponse {
+interface JinaRerankResponse {
   model: string;
   results: Array<{
     index: number;
     document: {
       text: string;
-      image: string;
     };
     relevance_score: number;
   }>;
@@ -95,55 +94,6 @@ export async function rerankDocuments(
     }));
 
     return {results: finalResults};
-  } catch (error) {
-    console.error('Error in reranking documents:', error);
-
-    // Return empty results if there is an error
-    return {
-      results: []
-    };
-  }
-}
-
-export async function rerankImages(
-  query: string,
-  documents: Record<string, string>[],
-  tracker?: TokenTracker,
-  top_n?: number,
-): Promise<{ results: Array<{index: number, relevance_score: number, document: {image: string}}> }> {
-  try {
-    if (!JINA_API_KEY) {
-      throw new Error('JINA_API_KEY is not set');
-    }
-
-    const request: JinaRerankRequest = {
-      model: 'jina-reranker-m0',
-      query,
-      top_n: top_n ?? documents.length,
-      documents
-    };
-
-    const response = await axios.post<JinaRerankResponse>(
-      JINA_API_URL,
-      request,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${JINA_API_KEY}`
-        }
-      }
-    );
-
-    // Track token usage from the API
-    (tracker || new TokenTracker()).trackUsage('rerank', {
-      promptTokens: response.data.usage.total_tokens,
-      completionTokens: 0,
-      totalTokens: response.data.usage.total_tokens
-    });
-
-    return {
-      results: response.data.results
-    };
   } catch (error) {
     console.error('Error in reranking documents:', error);
 

@@ -72,13 +72,6 @@ export type RepeatEvaluationType = {
   numEvalsRequired: number;
 }
 
-export type ImageObject = {
-  url: string;
-  data: string;
-  width: number;
-  height: number;
-}
-
 // Following Vercel AI SDK's token counting interface
 export interface TokenUsage {
   tool: string;
