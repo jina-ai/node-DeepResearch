@@ -1,4 +1,4 @@
-import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction, WebContent} from "../types";
+import {BoostedSearchSnippet, ImageObject, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction, WebContent} from "../types";
 import {getI18nText, smartMergeStrings} from "./text-tools";
 import {rerankDocuments} from "../tools/jina-rerank";
 import {readUrl} from "../tools/read";
@@ -454,6 +454,7 @@ export async function processURLs(
   allURLs: Record<string, SearchSnippet>,
   visitedURLs: string[],
   badURLs: string[],
+  imageObjects: ImageObject[],
   schemaGen: Schemas,
   question: string,
   webContents: Record<string, WebContent>
@@ -544,13 +545,7 @@ export async function processURLs(
         imageUrls.forEach(async (url) => {
           const imageObject = await processImage(url, context.tokenTracker);
           if (imageObject) {
-            context.actionTracker.trackAction({
-              thisStep: {
-                action: 'visit',
-                think: '',
-                image: imageObject,
-              } as VisitAction
-            });
+            imageObjects.push(imageObject);
           }
         });
 
