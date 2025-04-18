@@ -41,7 +41,7 @@ export async function buildReferences(
       };
 
       // Track valid web chunks (above minimum length)
-      if (chunk.length >= minChunkLength) {
+      if (chunk?.length >= minChunkLength) {
         validWebChunkIndices.add(chunkIndex);
       }
 

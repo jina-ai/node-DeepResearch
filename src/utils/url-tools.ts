@@ -1,4 +1,4 @@
-import {BoostedSearchSnippet, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction, WebContent} from "../types";
+import {BoostedSearchSnippet, ImageObject, KnowledgeItem, SearchSnippet, TrackerContext, VisitAction, WebContent} from "../types";
 import {getI18nText, smartMergeStrings} from "./text-tools";
 import {rerankDocuments} from "../tools/jina-rerank";
 import {readUrl} from "../tools/read";
@@ -6,6 +6,7 @@ import {Schemas} from "./schemas";
 import {cherryPick} from "../tools/jina-latechunk";
 import {formatDateBasedOnType} from "./date-tools";
 import {classifyText} from "../tools/jina-classify-spam";
+import { processImage } from "./image-tools";
 import {segmentText} from "../tools/segment";
 
 export function normalizeUrl(urlString: string, debug = false, options = {
@@ -453,6 +454,7 @@ export async function processURLs(
   allURLs: Record<string, SearchSnippet>,
   visitedURLs: string[],
   badURLs: string[],
+  imageObjects: ImageObject[],
   schemaGen: Schemas,
   question: string,
   webContents: Record<string, WebContent>
@@ -484,7 +486,7 @@ export async function processURLs(
         // Store normalized URL for consistent reference
         url = normalizedUrl;
 
-        const {response} = await readUrl(url, true, context.tokenTracker);
+        const {response} = await readUrl(url, true, context.tokenTracker, true);
         const {data} = response;
         const guessedTime = await getLastModified(url);
         if (guessedTime) {
@@ -535,6 +537,15 @@ export async function processURLs(
           // in-page link has lower initial weight comparing to search links
           if (r.url) {
             addToAllURLs(r, allURLs, 0.1);
+          }
+        });
+
+        // Process images
+        const imageUrls = Object.values(data.images || {});
+        imageUrls.forEach(async (url) => {
+          const imageObject = await processImage(url, context.tokenTracker);
+          if (imageObject) {
+            imageObjects.push(imageObject);
           }
         });
 

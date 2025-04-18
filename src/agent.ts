@@ -16,7 +16,8 @@ import {
   KnowledgeItem,
   EvaluationType,
   BoostedSearchSnippet,
-  SearchSnippet, EvaluationResponse, Reference, SERPQuery, RepeatEvaluationType, UnNormalizedSearchSnippet, WebContent
+  SearchSnippet, EvaluationResponse, Reference, SERPQuery, RepeatEvaluationType, UnNormalizedSearchSnippet, WebContent,
+  ImageObject
 } from "./types";
 import {TrackerContext} from "./types";
 import {search} from "./tools/jina-search";
@@ -394,7 +395,7 @@ export async function getResponse(question?: string,
                                   onlyHostnames: string[] = [],
                                   maxRef: number = 10,
                                   minRelScore: number = 0.75
-): Promise<{ result: StepAction; context: TrackerContext; visitedURLs: string[], readURLs: string[], allURLs: string[] }> {
+): Promise<{ result: StepAction; context: TrackerContext; visitedURLs: string[], readURLs: string[], allURLs: string[], testImages: string[] }> {
 
   let step = 0;
   let totalStep = 0;
@@ -445,6 +446,7 @@ export async function getResponse(question?: string,
   const allWebContents: Record<string, WebContent> = {};
   const visitedURLs: string[] = [];
   const badURLs: string[] = [];
+  const imageObjects: ImageObject[] = [];
   const evaluationMetrics: Record<string, RepeatEvaluationType[]> = {};
   // reserve the 10% final budget for the beast mode
   const regularBudget = tokenBudget * 0.85;
@@ -849,6 +851,7 @@ You decided to think out of the box or cut from a completely different angle.
           allURLs,
           visitedURLs,
           badURLs,
+          imageObjects,
           SchemaGen,
           currentQuestion,
           allWebContents
@@ -1019,7 +1022,8 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
     context,
     visitedURLs: returnedURLs,
     readURLs: visitedURLs.filter(url => !badURLs.includes(url)),
-    allURLs: weightedURLs.map(r => r.url)
+    allURLs: weightedURLs.map(r => r.url),
+    testImages: imageObjects.map(i => i.url),
   };
 }
 
