@@ -55,7 +55,7 @@ export type ReflectAction = BaseAction & {
 export type VisitAction = BaseAction & {
   action: "visit";
   URLTargets: number[] | string[];
-  image?: string;
+  image?: ImageObject;
 };
 
 export type CodingAction = BaseAction & {
@@ -325,11 +325,11 @@ export interface TrackerContext {
 // Interface definitions for Jina API
 export interface JinaEmbeddingRequest {
   model: string;
-  task: string;
+  task?: string;
   late_chunking?: boolean;
   dimensions?: number;
   embedding_type?: string;
-  input: string[];
+  input: string[] | Record<string, string>[];
   truncate?: boolean;
 }
 
@@ -345,4 +345,9 @@ export interface JinaEmbeddingResponse {
     index: number;
     embedding: number[];
   }>;
+}
+
+export type ImageObject = {
+  url: string;
+  embedding: number[][];
 }

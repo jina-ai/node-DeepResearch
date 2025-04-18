@@ -8,6 +8,7 @@ import {
   ChatCompletionChunk,
   AnswerAction,
   Model, StepAction, VisitAction,
+  ImageObject,
 } from './types';
 import {TokenTracker} from "./utils/token-tracker";
 import {ActionTracker} from "./utils/action-tracker";
@@ -463,7 +464,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     tokenTracker: new TokenTracker(),
     actionTracker: new ActionTracker()
   };
-  const testImages: string[] = [];
+  const testImages: ImageObject[] = [];
 
   // Add this inside the chat completions endpoint, before setting up the action listener
   const streamingState: StreamingState = {
@@ -518,7 +519,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
           };
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
         });
-        if (step.image && !testImages.includes(step.image)) {
+        if (step.image && !testImages.find(i => i.url === step.image?.url)) {
           testImages.push(step.image);
         }
       }
@@ -616,6 +617,10 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       };
       res.write(`data: ${JSON.stringify(closeThinkChunk)}\n\n`);
 
+      // Handle Image Embedding
+      const allEmbeddings = testImages.map(i => i.embedding);
+      console.log('=====testImages Embeddings: ', allEmbeddings.length);
+
       // After the content is fully streamed, send the final chunk with finish_reason and usage
       const finalChunk: ChatCompletionChunk = {
         id: requestId,
@@ -637,11 +642,15 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs,
         readURLs,
         numURLs: allURLs.length,
-        testImages,
+        testImages: testImages.map(i => i.url),
       };
       res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
       res.end();
     } else {
+      // Handle Image Embedding
+      const allEmbeddings = testImages.map(i => i.embedding);
+      console.log('=====testImages Embeddings: ', allEmbeddings.length);
+
       const response: ChatCompletionResponse = {
         id: requestId,
         object: 'chat.completion',
@@ -663,7 +672,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs,
         readURLs,
         numURLs: allURLs.length,
-        testImages,
+        testImages: testImages.map(i => i.url),
       };
 
       // Log final response (excluding full content for brevity)
@@ -675,7 +684,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs: response.visitedURLs,
         readURLs: response.readURLs,
         numURLs: allURLs.length,
-        testImages: testImages
+        testImages: testImages.map(i => i.url),
       });
 
       res.json(response);

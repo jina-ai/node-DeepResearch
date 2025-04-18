@@ -1,4 +1,7 @@
 import canvas from '@napi-rs/canvas';
+import { getEmbeddings } from '../tools/embeddings';
+import { TokenTracker } from './token-tracker';
+import { ImageObject } from '../types';
 export type { Canvas, Image } from '@napi-rs/canvas';
 
 export const downloadFile = async (uri: string) => {
@@ -66,7 +69,13 @@ export const loadImage = async (uri: string | Buffer) => {
 }
 
 export const fitImageToSquareBox = (image: canvas.Image | canvas.Canvas, size: number = 1024) => {
-    if (image.width < size ||image.height < size) return;
+    if (image.width <= size && image.height <= size) {
+      const canvasInstance = canvas.createCanvas(image.width, image.height);
+      const ctx = canvasInstance.getContext('2d');
+      ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, canvasInstance.width, canvasInstance.height);
+      
+      return canvasInstance;
+    }
 
     const aspectRatio = image.width / image.height;
 
@@ -89,7 +98,7 @@ export const canvasToBuffer = (canvas: canvas.Canvas, mimeType?: 'image/png' | '
     return canvas.toBuffer((mimeType || 'image/png') as 'image/png');
 }
 
-export const processImage = async (url: string): Promise<string | undefined> => {
+export const processImage = async (url: string, tracker: TokenTracker): Promise<ImageObject | undefined> => {
   try {
     const img = await loadImage(url);
     if (!img) {
@@ -101,7 +110,20 @@ export const processImage = async (url: string): Promise<string | undefined> => 
       return;
     }
 
-    return url;
+    const canvas = fitImageToSquareBox(img, 512);
+    const base64Data = (await canvasToDataUrl(canvas)).split(',')[1];
+
+    const {embeddings} = await getEmbeddings([{image: base64Data}], tracker, {
+      dimensions: 512,
+      model: 'jina-clip-v2',
+    });
+
+    console.log(`Processed image successfully: ${url} (${img.width}x${img.height})`);
+
+    return {
+      url,
+      embedding: embeddings,
+    };
 
   } catch (error) {
     console.error(`Error processing image: ${url}`, error instanceof Error ? error.message : String(error));

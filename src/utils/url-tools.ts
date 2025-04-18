@@ -542,13 +542,13 @@ export async function processURLs(
         // Process images
         const imageUrls = Object.values(data.images || {});
         imageUrls.forEach(async (url) => {
-          const imageUrl = await processImage(url);
-          if (imageUrl) {
+          const imageObject = await processImage(url, context.tokenTracker);
+          if (imageObject) {
             context.actionTracker.trackAction({
               thisStep: {
                 action: 'visit',
                 think: '',
-                image: imageUrl,
+                image: imageObject,
               } as VisitAction
             });
           }

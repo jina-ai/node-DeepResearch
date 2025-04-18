@@ -7,13 +7,14 @@ const API_URL = "https://api.jina.ai/v1/embeddings";
 
 // Modified to support different embedding tasks and dimensions
 export async function getEmbeddings(
-  texts: string[],
+  texts: string[] | Record<string, string>[],
   tokenTracker?: any,
   options: {
     task?: "text-matching" | "retrieval.passage" | "retrieval.query",
     dimensions?: number,
     late_chunking?: boolean,
-    embedding_type?: string
+    embedding_type?: string,
+    model?: string,
   } = {}
 ): Promise<{ embeddings: number[][], tokens: number }> {
   console.log(`[embeddings] Getting embeddings for ${texts.length} texts`);
@@ -38,11 +39,14 @@ export async function getEmbeddings(
     console.log(`[embeddings] Processing batch ${currentBatch}/${batchCount} (${batchTexts.length} texts)`);
 
     const request: JinaEmbeddingRequest = {
-      model: "jina-embeddings-v3",
-      task: options.task || "text-matching",
+      model: options.model || "jina-embeddings-v3",
       input: batchTexts,
-      truncate: true
     };
+
+    if (request.model === "jina-embeddings-v3") {
+      request.task = options.task || "text-matching";
+      request.truncate = true;
+    }
 
     // Add optional parameters if provided
     if (options.dimensions) request.dimensions = options.dimensions;
