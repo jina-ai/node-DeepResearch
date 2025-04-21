@@ -29,6 +29,15 @@ export type Reference = {
   answerChunkPosition?: number[];
 }
 
+export type ImageReference = {
+  url: string;
+  alt: string;
+  dateTime?: string;
+  relevanceScore?: number;
+  answerChunk?: string;
+  answerChunkPosition?: number[];
+}
+
 export type AnswerAction = BaseAction & {
   action: "answer";
   answer: string;
@@ -282,6 +291,7 @@ export interface ChatCompletionResponse {
   readURLs?: string[];
   numURLs?: number;
   testImages?: string[];
+  imageReferences?: ImageReference[];
 }
 
 export interface ChatCompletionChunk {
@@ -307,6 +317,7 @@ export interface ChatCompletionChunk {
   readURLs?: string[];
   numURLs?: number;
   testImages?: string[];
+  imageReferences?: ImageReference[];
 }
 
 // Tracker Types
@@ -349,5 +360,6 @@ export interface JinaEmbeddingResponse {
 
 export type ImageObject = {
   url: string;
+  alt?: string;
   embedding: number[][];
 }

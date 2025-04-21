@@ -541,9 +541,9 @@ export async function processURLs(
         });
 
         // Process images
-        const imageUrls = Object.values(data.images || {});
-        imageUrls.forEach(async (url) => {
-          const imageObject = await processImage(url, context.tokenTracker);
+        const imageEntries = Object.entries(data.images || {});
+        imageEntries.forEach(async ([alt, url]) => {
+          const imageObject = await processImage(url, context.tokenTracker, alt);
           if (imageObject) {
             imageObjects.push(imageObject);
           }
