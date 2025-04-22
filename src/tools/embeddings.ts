@@ -8,13 +8,14 @@ const MAX_RETRIES = 3; // Maximum number of retries for missing embeddings
 
 // Modified to support different embedding tasks and dimensions
 export async function getEmbeddings(
-  texts: string[],
+  texts: string[] | Record<string, string>[],
   tokenTracker?: any,
   options: {
     task?: "text-matching" | "retrieval.passage" | "retrieval.query",
     dimensions?: number,
     late_chunking?: boolean,
-    embedding_type?: string
+    embedding_type?: string,
+    model?: string,
   } = {}
 ): Promise<{ embeddings: number[][], tokens: number }> {
   console.log(`[embeddings] Getting embeddings for ${texts.length} texts`);
@@ -66,17 +67,18 @@ export async function getEmbeddings(
 
 // Helper function to get embeddings for a batch with retry logic for missing indices
 async function getBatchEmbeddingsWithRetry(
-  batchTexts: string[],
+  batchTexts: string[] | Record<string, string>[],
   options: {
     task?: "text-matching" | "retrieval.passage" | "retrieval.query",
     dimensions?: number,
     late_chunking?: boolean,
-    embedding_type?: string
+    embedding_type?: string,
+    model?: string,
   },
   currentBatch: number,
   batchCount: number
 ): Promise<{ batchEmbeddings: number[][], batchTokens: number }> {
-  let batchEmbeddings: number[][] = [];
+  const batchEmbeddings: number[][] = [];
   let batchTokens = 0;
   let retryCount = 0;
   let textsToProcess = [...batchTexts]; // Copy the original texts
@@ -89,11 +91,14 @@ async function getBatchEmbeddingsWithRetry(
 
   while (textsToProcess.length > 0 && retryCount < MAX_RETRIES) {
     const request: JinaEmbeddingRequest = {
-      model: "jina-embeddings-v3",
-      task: options.task || "text-matching",
-      input: textsToProcess,
-      truncate: true
+      model: options.model || "jina-embeddings-v3",
+      input: textsToProcess as any,
     };
+
+    if (request.model === "jina-embeddings-v3") {
+      request.task = options.task || "text-matching";
+      request.truncate = true;
+    }
 
     // Add optional parameters if provided
     if (options.dimensions) request.dimensions = options.dimensions;
@@ -110,7 +115,7 @@ async function getBatchEmbeddingsWithRetry(
             "Authorization": `Bearer ${JINA_API_KEY}`
           }
         }
-      );
+      ); 
 
       if (!response.data.data) {
         console.error('No data returned from Jina API');
@@ -118,7 +123,7 @@ async function getBatchEmbeddingsWithRetry(
           // On last retry, create placeholder embeddings
           const dimensionSize = options.dimensions || 1024;
           const placeholderEmbeddings = textsToProcess.map(text => {
-            console.error(`Failed to get embedding after all retries: [${text.substring(0, 50)}...]`);
+            console.error(`Failed to get embedding after all retries: [${truncateInputString(text)}...]`);
             return new Array(dimensionSize).fill(0);
           });
           
@@ -140,7 +145,7 @@ async function getBatchEmbeddingsWithRetry(
       
       // Process successful embeddings
       const successfulEmbeddings: number[][] = [];
-      const remainingTexts: string[] = [];
+      const remainingTexts: (string | Record<string, string>)[] = [];
       const newIndexMap = new Map<number, number>();
       
       for (let idx = 0; idx < textsToProcess.length; idx++) {
@@ -160,7 +165,7 @@ async function getBatchEmbeddingsWithRetry(
           const newIndex = remainingTexts.length;
           newIndexMap.set(newIndex, indexMap.get(idx)!);
           remainingTexts.push(textsToProcess[idx]);
-          console.log(`Missing embedding for index ${idx}, will retry: [${textsToProcess[idx].substring(0, 50)}...]`);
+          console.log(`Missing embedding for index ${idx}, will retry: [${truncateInputString(textsToProcess[idx])}...]`);
         }
       }
 
@@ -190,7 +195,7 @@ async function getBatchEmbeddingsWithRetry(
         const dimensionSize = options.dimensions || 1024;
         for (let idx = 0; idx < textsToProcess.length; idx++) {
           const originalIndex = indexMap.get(idx)!;
-          console.error(`Failed to get embedding after all retries for index ${originalIndex}: [${textsToProcess[idx].substring(0, 50)}...]`);
+          console.error(`Failed to get embedding after all retries for index ${originalIndex}: [${truncateInputString(textsToProcess[idx])}...]`);
           
           while (batchEmbeddings.length <= originalIndex) {
             batchEmbeddings.push([]);
@@ -227,4 +232,12 @@ async function getBatchEmbeddingsWithRetry(
   }
   
   return { batchEmbeddings, batchTokens };
+}
+
+function truncateInputString(input: string | Record<string, string>): string {
+  if (typeof input === 'string') {
+    return input.slice(0, 50);
+  } else {
+    return Object.values(input)[0].slice(0, 50);
+  }
 }

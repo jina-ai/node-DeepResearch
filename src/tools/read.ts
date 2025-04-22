@@ -6,7 +6,8 @@ import { JINA_API_KEY } from "../config";
 export async function readUrl(
   url: string,
   withAllLinks?: boolean,
-  tracker?: TokenTracker
+  tracker?: TokenTracker,
+  withAllImages?: boolean
 ): Promise<{ response: ReadResponse }> {
   if (!url.trim()) {
     throw new Error('URL cannot be empty');
@@ -20,12 +21,17 @@ export async function readUrl(
     'Accept': 'application/json',
     'Authorization': `Bearer ${JINA_API_KEY}`,
     'Content-Type': 'application/json',
-    'X-Retain-Images': 'none',
     'X-Md-Link-Style': 'discarded',
   };
 
   if (withAllLinks) {
     headers['X-With-Links-Summary'] = 'all';
+  }
+
+  if (withAllImages) {
+    headers['X-With-Images-Summary'] = 'true'
+  } else {
+    headers['X-Retain-Images'] = 'none'
   }
 
   try {
