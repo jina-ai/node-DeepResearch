@@ -118,7 +118,6 @@ export const processImage = async (url: string, tracker: TokenTracker, alt?: str
     const {embeddings} = await getEmbeddings([{ image: base64Data }], tracker, {
       dimensions: 512,
       model: 'jina-clip-v2',
-      task: 'retrieval.query',
     });
 
     console.log(`Processed image successfully: ${url} (${img.width}x${img.height})`);

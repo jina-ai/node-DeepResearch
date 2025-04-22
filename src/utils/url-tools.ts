@@ -544,7 +544,7 @@ export async function processURLs(
         const imageEntries = Object.entries(data.images || {});
         imageEntries.forEach(async ([alt, url]) => {
           const imageObject = await processImage(url, context.tokenTracker, alt);
-          if (imageObject) {
+          if (imageObject && !imageObjects.find(i => i.url === imageObject.url)) {
             imageObjects.push(imageObject);
           }
         });
