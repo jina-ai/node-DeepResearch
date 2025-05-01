@@ -7,11 +7,14 @@
     "JINA_API_KEY": "",
     "BRAVE_API_KEY": "",
     "SERPER_API_KEY": "",
-    "DEFAULT_MODEL_NAME": ""
+    "DEFAULT_MODEL_NAME": "",
+    "AZURE_OPENAI_RESOURCE_NAME": "",
+    "AZURE_OPENAI_API_KEY": "",
+    "AZURE_OPENAI_API_VERSION": ""
   },
   "defaults": {
     "search_provider": "jina",
-    "llm_provider": "gemini",
+    "llm_provider": "azure",
     "step_sleep": 100
   },
   "providers": {
@@ -23,6 +26,9 @@
       "clientConfig": {
         "compatibility": "strict"
       }
+    },
+    "azure":{
+      "createClient": "createAzure"
     }
   },
   "models": {
@@ -46,7 +52,7 @@
     },
     "openai": {
       "default": {
-        "model": "gpt-4o-mini",
+        "model": "gpt-4o",
         "temperature": 0,
         "maxTokens": 8000
       },
@@ -61,6 +67,25 @@
         "agentBeastMode": { "temperature": 0.7 },
         "fallback": { "temperature": 0 }
       }
+    },
+    "azure":{
+      "default": {
+        "model": "gpt-4o",
+        "temperature": 0,
+        "maxTokens": 10000
+      },
+      "tools": {
+        "coder": { "temperature": 0.7 },
+        "searchGrounding": { "temperature": 0 },
+        "dedup": { "temperature": 0.1 },
+        "evaluator": {},
+        "errorAnalyzer": {},
+        "queryRewriter": { "temperature": 0.1 },
+        "agent": { "temperature": 0.7 },
+        "agentBeastMode": { "temperature": 0.7 },
+        "fallback": { "temperature": 0 }
+      }
+
     }
   }
 }
