@@ -14,7 +14,7 @@
   },
   "defaults": {
     "search_provider": "jina",
-    "llm_provider": "azure",
+    "llm_provider": "gemini",
     "step_sleep": 100
   },
   "providers": {
@@ -52,7 +52,7 @@
     },
     "openai": {
       "default": {
-        "model": "gpt-4o",
+        "model": "gpt-4o-mini",
         "temperature": 0,
         "maxTokens": 8000
       },
