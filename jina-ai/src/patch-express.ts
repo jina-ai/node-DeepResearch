@@ -211,6 +211,10 @@ export const jinaAiMiddleware = (req: Request, res: Response, next: NextFunction
             if (err.stack) {
                 logger.error(err.stack);
             }
+        } finally {
+            if (ctx.promptContext) {
+                ctx.promptContext = null;
+            }
         }
 
     });
