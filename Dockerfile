@@ -33,6 +33,9 @@ COPY --from=builder /app/config.json ./
 COPY --from=builder /app/dist ./dist
 
 # Set environment variables (Recommended to set at runtime, avoid hardcoding)
+ENV AZURE_OPENAI_RESOURCE_NAME=${AZURE_OPENAI_RESOURCE_NAME}
+ENV AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+ENV AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
 ENV GEMINI_API_KEY=${GEMINI_API_KEY}
 ENV OPENAI_API_KEY=${OPENAI_API_KEY}
 ENV JINA_API_KEY=${JINA_API_KEY}
