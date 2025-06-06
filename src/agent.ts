@@ -395,8 +395,9 @@ export async function getResponse(question?: string,
                                   badHostnames: string[] = [],
                                   onlyHostnames: string[] = [],
                                   maxRef: number = 10,
-                                  minRelScore: number = 0.75
-): Promise<{ result: StepAction; context: TrackerContext; visitedURLs: string[], readURLs: string[], allURLs: string[], testImages: string[], imageReferences: ImageReference[] }> {
+                                  minRelScore: number = 0.75,
+                                  with_images: boolean = false
+): Promise<{ result: StepAction; context: TrackerContext; visitedURLs: string[], readURLs: string[], allURLs: string[], allImages?: string[], imageReferences?: ImageReference[] }> {
 
   let step = 0;
   let totalStep = 0;
@@ -855,7 +856,8 @@ You decided to think out of the box or cut from a completely different angle.
           imageObjects,
           SchemaGen,
           currentQuestion,
-          allWebContents
+          allWebContents,
+          with_images
         );
 
         diaryContext.push(success
@@ -1014,11 +1016,9 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
       );
   }
 
-  console.log(thisStep);
   let imageReferences: any;
-  if(imageObjects.length) {
+  if(imageObjects.length && with_images) {
     imageReferences = await buildImageReferences(answerStep.answer, imageObjects, context, SchemaGen);
-    console.log('**Image references**:', imageReferences);
   }
 
   // max return 300 urls
@@ -1029,8 +1029,8 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
     visitedURLs: returnedURLs,
     readURLs: visitedURLs.filter(url => !badURLs.includes(url)),
     allURLs: weightedURLs.map(r => r.url),
-    testImages: imageObjects.map(i => i.url),
-    imageReferences: imageReferences,
+    allImages: with_images ? imageObjects.map(i => i.url) : undefined,
+    imageReferences: with_images ? imageReferences : undefined,
   };
 }
 

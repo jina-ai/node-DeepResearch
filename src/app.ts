@@ -548,7 +548,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       visitedURLs,
       readURLs,
       allURLs,
-      testImages,
+      allImages,
       imageReferences,
     } = await getResponse(undefined,
       tokenBudget,
@@ -561,7 +561,8 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       body.bad_hostnames,
       body.only_hostnames,
       body.max_annotations,
-      body.min_annotation_relevance
+      body.min_annotation_relevance,
+      body.with_images,
       )
     let finalAnswer = (finalStep as AnswerAction).mdAnswer;
 
@@ -635,7 +636,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs,
         readURLs,
         numURLs: allURLs.length,
-        testImages,
+        allImages,
         imageReferences
       };
       res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
@@ -663,7 +664,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs,
         readURLs,
         numURLs: allURLs.length,
-        testImages,
+        allImages,
         imageReferences: imageReferences,
       };
 
@@ -676,7 +677,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs: response.visitedURLs,
         readURLs: response.readURLs,
         numURLs: allURLs.length,
-        testImages,
+        allImages: allImages?.length,
       });
 
       res.json(response);

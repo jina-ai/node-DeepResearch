@@ -457,7 +457,8 @@ export async function processURLs(
   imageObjects: ImageObject[],
   schemaGen: Schemas,
   question: string,
-  webContents: Record<string, WebContent>
+  webContents: Record<string, WebContent>,
+  withImages: boolean = false,
 ): Promise<{ urlResults: any[], success: boolean }> {
   // Skip if no URLs to process
   if (urls.length === 0) {
@@ -486,7 +487,7 @@ export async function processURLs(
         // Store normalized URL for consistent reference
         url = normalizedUrl;
 
-        const {response} = await readUrl(url, true, context.tokenTracker, true);
+        const {response} = await readUrl(url, true, context.tokenTracker, withImages);
         const {data} = response;
         const guessedTime = await getLastModified(url);
         if (guessedTime) {
@@ -541,13 +542,15 @@ export async function processURLs(
         });
 
         // Process images
-        const imageEntries = Object.entries(data.images || {});
-        imageEntries.forEach(async ([alt, url]) => {
-          const imageObject = await processImage(url, context.tokenTracker, alt);
-          if (imageObject && !imageObjects.find(i => i.url === imageObject.url)) {
-            imageObjects.push(imageObject);
-          }
-        });
+        if (withImages && data.images) {
+          const imageEntries = Object.entries(data.images || {});
+          imageEntries.forEach(async ([alt, url]) => {
+            const imageObject = await processImage(url, context.tokenTracker, alt);
+            if (imageObject && !imageObjects.find(i => i.url === imageObject.url)) {
+              imageObjects.push(imageObject);
+            }
+          });
+        }
 
         return {url, result: response};
       } catch (error: any) {

@@ -258,6 +258,8 @@ export interface ChatCompletionRequest {
 
   max_annotations?: number;
   min_annotation_relevance?: number;
+
+  with_images?: boolean;
 }
 
 export interface URLAnnotation {
@@ -290,7 +292,7 @@ export interface ChatCompletionResponse {
   visitedURLs?: string[];
   readURLs?: string[];
   numURLs?: number;
-  testImages?: string[];
+  allImages?: string[];
   imageReferences?: ImageReference[];
 }
 
@@ -316,7 +318,7 @@ export interface ChatCompletionChunk {
   visitedURLs?: string[];
   readURLs?: string[];
   numURLs?: number;
-  testImages?: string[];
+  allImages?: string[];
   imageReferences?: ImageReference[];
 }
 
