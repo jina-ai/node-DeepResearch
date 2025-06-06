@@ -116,7 +116,7 @@ export const processImage = async (url: string, tracker: TokenTracker, alt?: str
     // const input = altText ? [{image: base64Data, text: altText}] : [{image: base64Data}];
 
     const {embeddings} = await getEmbeddings([{ image: base64Data }], tracker, {
-      dimensions: 512,
+      dimensions: 1024,
       model: 'jina-clip-v2',
     });
 

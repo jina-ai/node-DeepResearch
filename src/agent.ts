@@ -1018,7 +1018,12 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
 
   let imageReferences: any;
   if(imageObjects.length && with_images) {
-    imageReferences = await buildImageReferences(answerStep.answer, imageObjects, context, SchemaGen);
+    try {
+      imageReferences = await buildImageReferences(answerStep.answer, imageObjects, context, SchemaGen);
+    } catch (error) {
+      console.error('Error building image references:', error);
+      imageReferences = [];
+    }
   }
 
   // max return 300 urls

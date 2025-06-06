@@ -372,7 +372,7 @@ export async function buildImageReferences(
   schema: Schemas,
   minChunkLength: number = 80,
   maxRef: number = 10,
-  minRelScore: number = 0.35
+  minRelScore: number = 0.38
 ): Promise<Array<ImageReference>> {
   console.log(`[buildImageReferences] Starting with maxRef=${maxRef}, minChunkLength=${minChunkLength}, minRelScore=${minRelScore}`);
   console.log(`[buildImageReferences] Answer length: ${answer.length} chars, Image sources: ${imageObjects.length}`);
@@ -438,7 +438,7 @@ export async function buildImageReferences(
       //  const embeddingsResult = await getEmbeddings(validAnswerChunks, context.tokenTracker, embeddingOptions); //  No embeddingOptions needed here
       //   answerEmbeddings.push(...embeddingsResult.embeddings);
       const embeddingsResult = await getEmbeddings(validAnswerChunks, context.tokenTracker, {
-          dimensions: 512,
+          dimensions: 1024,
           model: 'jina-clip-v2',
       });
       answerEmbeddings.push(...embeddingsResult.embeddings);
