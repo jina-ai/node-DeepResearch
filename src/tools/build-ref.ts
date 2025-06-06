@@ -3,6 +3,7 @@ import {ImageObject, ImageReference, Reference, TrackerContext, WebContent} from
 import {Schemas} from "../utils/schemas";
 import {cosineSimilarity, jaccardRank} from "./cosine";
 import {getEmbeddings} from "./embeddings";
+import { dedupImagesWithEmbeddings } from '../utils/image-tools';
 
 export async function buildReferences(
   answer: string,
@@ -372,7 +373,7 @@ export async function buildImageReferences(
   schema: Schemas,
   minChunkLength: number = 80,
   maxRef: number = 10,
-  minRelScore: number = 0.38
+  minRelScore: number = 0.35
 ): Promise<Array<ImageReference>> {
   console.log(`[buildImageReferences] Starting with maxRef=${maxRef}, minChunkLength=${minChunkLength}, minRelScore=${minRelScore}`);
   console.log(`[buildImageReferences] Answer length: ${answer.length} chars, Image sources: ${imageObjects.length}`);
@@ -384,11 +385,12 @@ export async function buildImageReferences(
 
   // Step 2: Prepare image content
   console.log(`[buildImageReferences] Step 2: Preparing image content`);
-  const allImageEmbeddings: number[][] = imageObjects.map(img => img.embedding[0]); // Extract embedding
+  const dudupImages = dedupImagesWithEmbeddings(imageObjects, []);
+  const allImageEmbeddings: number[][] = dudupImages.map(img => img.embedding[0]); // Extract embedding
   const imageToSourceMap: any = {};
   const validImageIndices = new Set<number>();
 
-  imageObjects.forEach((img, index) => {
+  dudupImages.forEach((img, index) => {
       imageToSourceMap[index] = {
           url: img.url,
           altText: img.alt,

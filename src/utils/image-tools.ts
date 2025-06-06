@@ -2,6 +2,7 @@ import canvas from '@napi-rs/canvas';
 import { getEmbeddings } from '../tools/embeddings';
 import { TokenTracker } from './token-tracker';
 import { ImageObject } from '../types';
+import { cosineSimilarity } from '../tools/cosine';
 export type { Canvas, Image } from '@napi-rs/canvas';
 
 export const downloadFile = async (uri: string) => {
@@ -143,4 +144,64 @@ const extractAltText = (alt: string): string | undefined => {
   const match = alt.match(/^Image\s+\d+(?:,\d+)?:\s+(.*)/i);
   
   return match ? match[1].trim() : alt;
+}
+
+export const dedupImagesWithEmbeddings = (
+  newImages: ImageObject[], // New images with embeddings
+  existingImages: ImageObject[], // Existing images with embeddings
+  similarityThreshold: number = 0.86, // Default similarity threshold
+): ImageObject[]  =>{
+  try {
+    // Quick return for single new image with no existing images
+    if (newImages.length === 1 && existingImages.length === 0) {
+      return newImages;
+    }
+
+    const uniqueImages: ImageObject[] = [];
+    const usedIndices = new Set<number>();
+
+    // Compare each new image against existing images and already accepted images
+    for (let i = 0; i < newImages.length; i++) {
+      let isUnique = true;
+
+      // Check against existing images
+      for (let j = 0; j < existingImages.length; j++) {
+        const similarity = cosineSimilarity(
+          newImages[i].embedding[0], // Use the first embedding for comparison
+          existingImages[j].embedding[0]
+        );
+        if (similarity >= similarityThreshold) {
+          isUnique = false;
+          break;
+        }
+      }
+
+      // Check against already accepted images
+      if (isUnique) {
+        for (const usedIndex of usedIndices) {
+          const similarity = cosineSimilarity(
+            newImages[i].embedding[0], // Use the first embedding for comparison
+            newImages[usedIndex].embedding[0]
+          );
+          if (similarity >= similarityThreshold) {
+            isUnique = false;
+            break;
+          }
+        }
+      }
+
+      // Add to unique images if passed all checks
+      if (isUnique) {
+        uniqueImages.push(newImages[i]);
+        usedIndices.add(i);
+      }
+    }
+
+    return uniqueImages;
+  } catch (error) {
+    console.error('Error in image deduplication analysis:', error);
+
+    // Return all new images if there is an error
+    return newImages;
+  }
 }
