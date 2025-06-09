@@ -29,7 +29,6 @@ export type Reference = {
 
 export type ImageReference = {
   url: string;
-  alt: string;
   dateTime?: string;
   relevanceScore?: number;
   answerChunk?: string;
@@ -292,7 +291,7 @@ export interface ChatCompletionResponse {
   readURLs?: string[];
   numURLs?: number;
   allImages?: string[];
-  imageReferences?: ImageReference[];
+  relatedImages?: string[];
 }
 
 export interface ChatCompletionChunk {
@@ -318,7 +317,7 @@ export interface ChatCompletionChunk {
   readURLs?: string[];
   numURLs?: number;
   allImages?: string[];
-  imageReferences?: ImageReference[];
+  relatedImages?: string[];
 }
 
 // Tracker Types

@@ -105,7 +105,7 @@ export const canvasToBuffer = (canvas: canvas.Canvas, mimeType?: 'image/png' | '
     return canvas.toBuffer((mimeType || 'image/png') as 'image/png');
 }
 
-export const processImage = async (url: string, tracker: TokenTracker, alt?: string): Promise<ImageObject | undefined> => {
+export const processImage = async (url: string, tracker: TokenTracker): Promise<ImageObject | undefined> => {
   try {
     const { img, buff, contentType } = await loadImage(url);
     if (!img) {
@@ -132,7 +132,7 @@ export const processImage = async (url: string, tracker: TokenTracker, alt?: str
     };
 
   } catch (error) {
-    console.error(`Error processing image: ${url}`, error instanceof Error ? error.message : String(error));
+    return;
   }
 }
 
@@ -211,7 +211,6 @@ export const saveImageToFirebase = async (
     const finalMimeType = mimeType || 'image/png';
 
     if (!finalMimeType.startsWith('image/')) {
-      console.error(`Unsupported image MIME type: ${finalMimeType}`);
       return;
     } else {
       extension = finalMimeType?.split('/')[1] || 'png';

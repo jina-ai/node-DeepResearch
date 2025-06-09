@@ -392,7 +392,7 @@ export async function getResponse(question?: string,
   minRelScore: number = 0.75,
   languageCode: string | undefined = undefined,
   with_images: boolean = false
-): Promise<{ result: StepAction; context: TrackerContext; visitedURLs: string[], readURLs: string[], allURLs: string[], allImages?: string[], imageReferences?: ImageReference[] }> {
+): Promise<{ result: StepAction; context: TrackerContext; visitedURLs: string[], readURLs: string[], allURLs: string[], allImages?: string[], relatedImages?: string[] }> {
 
   let step = 0;
   let totalStep = 0;
@@ -1013,10 +1013,11 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
     answerStep.mdAnswer = buildMdFromAnswer(answerStep);
   }
 
-  let imageReferences: any;
+  let imageReferences: ImageReference[] = [];
   if(imageObjects.length && with_images) {
     try {
       imageReferences = await buildImageReferences(answerStep.answer, imageObjects, context, SchemaGen);
+      console.log('Image references built:', imageReferences);
     } catch (error) {
       console.error('Error building image references:', error);
       imageReferences = [];
@@ -1032,7 +1033,7 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
     readURLs: visitedURLs.filter(url => !badURLs.includes(url)),
     allURLs: weightedURLs.map(r => r.url),
     allImages: with_images ? imageObjects.map(i => i.url) : undefined,
-    imageReferences: with_images ? imageReferences : undefined,
+    relatedImages: with_images ? imageReferences.map(i => i.url) : undefined,
   };
 }
 
