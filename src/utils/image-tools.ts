@@ -4,6 +4,8 @@ import { TokenTracker } from './token-tracker';
 import { ImageObject } from '../types';
 import { cosineSimilarity } from '../tools/cosine';
 export type { Canvas, Image } from '@napi-rs/canvas';
+import { Storage } from '@google-cloud/storage';
+import { randomUUID } from 'crypto';
 
 export const downloadFile = async (uri: string) => {
     const resp = await fetch(uri);
@@ -53,7 +55,11 @@ const _loadImage = async (input: string | Buffer) => {
   const img = await canvas.loadImage(buff);
   Reflect.set(img, 'contentType', contentType);
 
-  return img;
+  return {
+    img,
+    buff,
+    contentType,
+  };
 }
 
 export const loadImage = async (uri: string | Buffer) => {
@@ -101,7 +107,7 @@ export const canvasToBuffer = (canvas: canvas.Canvas, mimeType?: 'image/png' | '
 
 export const processImage = async (url: string, tracker: TokenTracker, alt?: string): Promise<ImageObject | undefined> => {
   try {
-    const img = await loadImage(url);
+    const { img, buff, contentType } = await loadImage(url);
     if (!img) {
       return;
     }
@@ -111,6 +117,7 @@ export const processImage = async (url: string, tracker: TokenTracker, alt?: str
       return;
     }
 
+    const newUrl = await saveImageToFirebase(buff, contentType);
     const canvas = fitImageToSquareBox(img, 512);
     const base64Data = (await canvasToDataUrl(canvas)).split(',')[1];
     const altText = alt ? extractAltText(alt) : undefined;
@@ -124,7 +131,7 @@ export const processImage = async (url: string, tracker: TokenTracker, alt?: str
     console.log(`Processed image successfully: ${url} (${img.width}x${img.height})`);
 
     return {
-      url,
+      url: newUrl ?? url,
       alt: altText,
       embedding: embeddings,
     };
@@ -205,3 +212,41 @@ export const dedupImagesWithEmbeddings = (
     return newImages;
   }
 }
+
+export const saveImageToFirebase = async (
+  buffer: Buffer,
+  mimeType?: string | null,
+): Promise<string | undefined> => {
+  if (!process.env.GCLOUD_PROJECT) {
+    console.error('GCLOUD_PROJECT environment variable is not set');
+    return;
+  }
+  const firebaseDefaultBucket = new Storage().bucket(`${process.env.GCLOUD_PROJECT}.appspot.com`);
+
+  try {
+    let extension = 'png';
+    const finalMimeType = mimeType || 'image/png';
+
+    if (!finalMimeType.startsWith('image/')) {
+      console.error(`Unsupported image MIME type: ${finalMimeType}`);
+      return;
+    } else {
+      extension = finalMimeType?.split('/')[1] || 'png';
+    }
+
+    const fileName = `readImages/${randomUUID()}.${extension}`;
+    
+    const file = firebaseDefaultBucket.file(fileName);
+    
+    await file.save(buffer, {
+      contentType: finalMimeType,
+      public: true,
+    });
+    
+    console.log(`Image saved to Firebase Storage: ${file.publicUrl()}`);
+    return file.publicUrl();
+  } catch (error) {
+    console.error('Error saving image to Firebase Storage:', error);
+    return;
+  }
+};

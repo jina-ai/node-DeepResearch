@@ -28,6 +28,7 @@
   "dependencies": {
     "@ai-sdk/google": "^1.0.0",
     "@ai-sdk/openai": "^1.1.9",
+    "@google-cloud/storage": "^7.16.0",
     "@napi-rs/canvas": "^0.1.68",
     "@types/jsdom": "^21.1.7",
     "ai": "^4.1.26",
