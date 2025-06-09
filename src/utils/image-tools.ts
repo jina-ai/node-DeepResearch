@@ -128,8 +128,6 @@ export const processImage = async (url: string, tracker: TokenTracker, alt?: str
       model: 'jina-clip-v2',
     });
 
-    console.log(`Processed image successfully: ${url} (${img.width}x${img.height})`);
-
     return {
       url: newUrl ?? url,
       alt: altText,
@@ -243,7 +241,6 @@ export const saveImageToFirebase = async (
       public: true,
     });
     
-    console.log(`Image saved to Firebase Storage: ${file.publicUrl()}`);
     return file.publicUrl();
   } catch (error) {
     console.error('Error saving image to Firebase Storage:', error);
