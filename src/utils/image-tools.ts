@@ -120,8 +120,6 @@ export const processImage = async (url: string, tracker: TokenTracker, alt?: str
     const newUrl = await saveImageToFirebase(buff, contentType);
     const canvas = fitImageToSquareBox(img, 512);
     const base64Data = (await canvasToDataUrl(canvas)).split(',')[1];
-    const altText = alt ? extractAltText(alt) : undefined;
-    // const input = altText ? [{image: base64Data, text: altText}] : [{image: base64Data}];
 
     const {embeddings} = await getEmbeddings([{ image: base64Data }], tracker, {
       dimensions: 1024,
@@ -130,25 +128,12 @@ export const processImage = async (url: string, tracker: TokenTracker, alt?: str
 
     return {
       url: newUrl ?? url,
-      alt: altText,
       embedding: embeddings,
     };
 
   } catch (error) {
     console.error(`Error processing image: ${url}`, error instanceof Error ? error.message : String(error));
   }
-}
-
-const extractAltText = (alt: string): string | undefined => {
-  // Handle cases like 'Image X' (without colon or description)
-  if (/^Image\s+\d+(?:,\d+)?$/i.test(alt)) {
-    return undefined; // Return empty string if alt is just an image reference
-  }
-  
-  // Handle cases like 'Image X: description' or 'Image X,Y: description'
-  const match = alt.match(/^Image\s+\d+(?:,\d+)?:\s+(.*)/i);
-  
-  return match ? match[1].trim() : alt;
 }
 
 export const dedupImagesWithEmbeddings = (

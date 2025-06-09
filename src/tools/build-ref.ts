@@ -535,8 +535,7 @@ export async function buildImageReferences(
           const source = imageToSourceMap[match.imageIndex];
           return {
               url: source.url,
-              alt: source.altText,
-              relevanceScore: match.relevanceScore,
+              // relevanceScore: match.relevanceScore,
               answerChunk: match.answerChunk,
               answerChunkPosition: match.answerChunkPosition
           };
