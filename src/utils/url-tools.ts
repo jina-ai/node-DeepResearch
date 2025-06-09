@@ -8,6 +8,7 @@ import {formatDateBasedOnType} from "./date-tools";
 import {classifyText} from "../tools/jina-classify-spam";
 import { processImage } from "./image-tools";
 import {segmentText} from "../tools/segment";
+import axiosClient from "./axios-client";
 
 export function normalizeUrl(urlString: string, debug = false, options = {
   removeAnchors: true,
@@ -174,7 +175,7 @@ const extractUrlParts = (urlStr: string) => {
   try {
     const url = new URL(urlStr);
     return {
-      hostname: url.hostname,
+      hostname: url.hostname.startsWith('www.') ? url.hostname.slice(4) : url.hostname,
       path: url.pathname
     };
   } catch (e) {
@@ -182,6 +183,15 @@ const extractUrlParts = (urlStr: string) => {
     return {hostname: "", path: ""};
   }
 };
+
+export const normalizeHostName = (hostStr: string) => {
+  const extract = extractUrlParts(hostStr);
+  const host = extract.hostname;
+  if (!host) {
+    return hostStr.startsWith('www.') ? hostStr.slice(4).toLowerCase() : hostStr.toLowerCase();
+  }
+  return host;
+}
 
 // Function to count occurrences of hostnames and paths
 export const countUrlParts = (urlItems: SearchSnippet[]) => {
@@ -281,7 +291,7 @@ export const rankURLs = (urlItems: SearchSnippet[], options: any = {}, trackers:
 
     // Hostname boost (normalized by total URLs)
     const hostnameFreq = normalizeCount(hostnameCount[hostname] || 0, totalUrls);
-    const hostnameBoost = hostnameFreq * hostnameBoostFactor * (boostHostnames.includes(hostname) ? 2 : 1);
+    const hostnameBoost = hostnameFreq * hostnameBoostFactor + (boostHostnames.includes(hostname) ? 2 : 0);
 
     // Path boost (consider all path prefixes with decay for longer paths)
     let pathBoost = 0;
@@ -398,22 +408,11 @@ export async function getLastModified(url: string): Promise<string | undefined> 
     // Call the API with proper encoding
     const apiUrl = `https://api-beta-datetime.jina.ai?url=${encodeURIComponent(url)}`;
 
-    // Create an AbortController with a timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const response = await fetch(apiUrl, {
-      signal: controller.signal
+    const response = await axiosClient.get(apiUrl, {
+      timeout: 10000,
     });
 
-    // Clear the timeout to prevent memory leaks
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = response.data;
 
     // Return the bestGuess date if available
     if (data.bestGuess && data.confidence >= 70) {
@@ -422,7 +421,7 @@ export async function getLastModified(url: string): Promise<string | undefined> 
 
     return undefined;
   } catch (error) {
-    console.error('Failed to fetch last modified date:', error);
+    console.error('Failed to fetch last modified date:');
     return undefined;
   }
 }
@@ -509,9 +508,18 @@ export async function processURLs(
         }
 
         // add to web contents
-        const {chunks, chunk_positions } = await segmentText(data.content, context)
+        const {chunks, chunk_positions } = await segmentText(data.content, context);
+        // filter out the chunks that are too short, minChunkLength is 80
+        const minChunkLength = 80;
+        for (let i = 0; i < chunks.length; i++) {
+          if (chunks[i].length < minChunkLength) {
+            chunks.splice(i, 1);
+            chunk_positions.splice(i, 1);
+            i--;
+          }
+        }
         webContents[data.url] = {
-          full: data.content,
+          // full: data.content,
           chunks,
           chunk_positions,
           title: data.title

@@ -1,6 +1,6 @@
 import {JINA_API_KEY} from "../config";
 import {JinaEmbeddingRequest, JinaEmbeddingResponse} from "../types";
-import axios, {AxiosError} from "axios";
+import axiosClient from "../utils/axios-client";
 
 const BATCH_SIZE = 128;
 const API_URL = "https://api.jina.ai/v1/embeddings";
@@ -106,7 +106,7 @@ async function getBatchEmbeddingsWithRetry(
     if (options.embedding_type) request.embedding_type = options.embedding_type;
 
     try {
-      const response = await axios.post<JinaEmbeddingResponse>(
+      const response = await axiosClient.post<JinaEmbeddingResponse>(
         API_URL,
         request,
         {
@@ -184,9 +184,9 @@ async function getBatchEmbeddingsWithRetry(
       // Increment retry count and log
       retryCount++;
       console.log(`[embeddings] Batch ${currentBatch}/${batchCount} - Retrying ${textsToProcess.length} texts (attempt ${retryCount}/${MAX_RETRIES})`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error calling Jina Embeddings API:', error);
-      if (error instanceof AxiosError && error.response?.status === 402) {
+      if (error.response?.status === 402 || error.message.includes('InsufficientBalanceError') || error.message.includes('insufficient balance')) {
         return { batchEmbeddings: [], batchTokens: 0 };
       }
       

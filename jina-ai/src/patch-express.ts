@@ -74,6 +74,16 @@ export const jinaAiMiddleware = (req: Request, res: Response, next: NextFunction
         next();
         return;
     }
+
+    // Early API key validation - reject immediately if no valid auth header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        corsMiddleware(req, res, () => {
+            res.status(401).json({ error: 'Unauthorized: API key required' });
+        });
+        return;
+    }
+
     asyncLocalContext.run(async () => {
         const googleTraceId = req.get('x-cloud-trace-context')?.split('/')?.[0];
         const ctx = asyncLocalContext.ctx;
@@ -86,10 +96,10 @@ export const jinaAiMiddleware = (req: Request, res: Response, next: NextFunction
                 [RPC_CALL_ENVIRONMENT]: { req, res }
             });
 
-            const uid = await authDto.solveUID();
-            if (!uid && !ctx.ip) {
-                throw new OperationNotAllowedError(`Missing IP information for anonymous user`);
-            }
+            const uid = await authDto.assertUID();
+            // if (!uid && !ctx.ip) {
+            //     throw new OperationNotAllowedError(`Missing IP information for anonymous user`);
+            // }
             let rateLimitPolicy
             if (uid) {
                 const user = await authDto.assertUser();
@@ -99,19 +109,19 @@ export const jinaAiMiddleware = (req: Request, res: Response, next: NextFunction
                 rateLimitPolicy = authDto.getRateLimits(appName) || [
                     parseInt(user.metadata?.speed_level) >= 2 ?
                         RateLimitDesc.from({
-                            occurrence: 100,
+                            occurrence: 500,
                             periodSeconds: 60
                         }) :
                         RateLimitDesc.from({
-                            occurrence: 10,
+                            occurrence: 50,
                             periodSeconds: 60
                         })
                 ];
             } else {
                 rateLimitPolicy = [
                     RateLimitDesc.from({
-                        occurrence: 2,
-                        periodSeconds: 60
+                        occurrence: 0,
+                        periodSeconds: 120
                     })
                 ]
             }
@@ -171,8 +181,20 @@ export const jinaAiMiddleware = (req: Request, res: Response, next: NextFunction
                     patchedCtx.context = patchedCtx.context.map((x: object) => ({ ...x, result: undefined }))
                 }
 
+                let data;
+                try {
+                    data = JSON.stringify(patchedCtx);
+                } catch (err: any) {
+                    const obj = marshalErrorLike(err);
+                    if (err.stack) {
+                        obj.stack = err.stack;
+                    }
+                    data = JSON.stringify(obj);
+                    logger.warn(`Failed to stringify promptContext`, { err: obj });
+                }
+
                 firebaseDefaultBucket.file(`promptContext/${ctx.traceId}.json`).save(
-                    JSON.stringify(patchedCtx),
+                    data,
                     {
                         metadata: {
                             contentType: 'application/json',
@@ -180,6 +202,8 @@ export const jinaAiMiddleware = (req: Request, res: Response, next: NextFunction
                     }
                 ).catch((err: any) => {
                     logger.warn(`Failed to save promptContext`, { err: marshalErrorLike(err) });
+                }).finally(() => {
+                    ctx.promptContext = undefined;
                 });
             }
 

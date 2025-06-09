@@ -56,11 +56,9 @@ Leverage the soundbites from the context user provides to generate queries that 
 2. Schema usage rules:
    - Always include the 'q' field in every query object (should be the last field listed)
    - Use 'tbs' for time-sensitive queries (remove time constraints from 'q' field)
-   - Use 'gl' and 'hl' for region/language-specific queries (remove region/language from 'q' field)
-   - Use appropriate language code in 'hl' when using non-English queries
    - Include 'location' only when geographically relevant
    - Never duplicate information in 'q' that is already specified in other fields
-   - List fields in this order: tbs, gl, hl, location, q
+   - List fields in this order: tbs, location, q
 
 <query-operators>
 For the 'q' field content:
@@ -98,8 +96,6 @@ queries: [
     "q": "宝马行情"
   },
   {
-    "gl": "de",
-    "hl": "de",
     "q": "BMW Gebrauchtwagen Probleme"
   },
   {
@@ -127,13 +123,10 @@ queries: [
   },
   {
     "tbs": "qdr:y",
-    "gl": "au",
     "location": "Perth",
     "q": "aboriginal firestick farming soil restoration"
   },
   {
-    "gl": "uk",
-    "hl": "en",
     "location": "Totnes",
     "q": "comparison no-till vs biochar vs compost tea"
   },
@@ -143,14 +136,11 @@ queries: [
     "q": "soil microbial inoculants research trials"
   },
   {
-    "gl": "at",
-    "hl": "de",
     "location": "Graz",
     "q": "Humusaufbau Alpenregion Techniken"
   },
   {
     "tbs": "qdr:m",
-    "gl": "ca",
     "location": "Guelph",
     "q": "regenerative agriculture exaggerated claims evidence"
   }
@@ -166,33 +156,26 @@ AIリテラシー向上させる方法か...なるほど。最近AIがどんど�
 </think>
 queries: [
   {
-    "hl": "ja",
     "q": "AI技術 限界 誇大宣伝"
   },
   {
-    "gl": "jp",
-    "hl": "ja",
     "q": "AIリテラシー 学習ステップ 体系化"
   },
   {
     "tbs": "qdr:y",
-    "hl": "ja",
     "q": "AI歴史 失敗事例 教訓"
   },
   {
-    "hl": "ja",
     "q": "AIリテラシー vs プログラミング vs 批判思考"
   },
   {
     "tbs": "qdr:m",
-    "hl": "ja",
     "q": "AI最新トレンド 必須スキル"
   },
   {
     "q": "artificial intelligence literacy fundamentals"
   },
   {
-    "hl": "ja",
     "q": "AIリテラシー向上 無意味 理由"
   }
 ]

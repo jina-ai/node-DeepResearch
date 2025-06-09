@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { TokenTracker } from "../utils/token-tracker";
 import { JINA_API_KEY } from "../config";
+import axiosClient from "../utils/axios-client";
 
 const JINA_API_URL = 'https://api.jina.ai/v1/classify';
 
@@ -49,7 +49,7 @@ export async function classifyText(
     });
 
     // Make the API request with axios
-    const apiRequestPromise = axios.post<JinaClassifyResponse>(
+    const apiRequestPromise = axiosClient.post<JinaClassifyResponse>(
       JINA_API_URL,
       request,
       {

@@ -10,7 +10,7 @@
     "DEFAULT_MODEL_NAME": ""
   },
   "defaults": {
-    "search_provider": "serper",
+    "search_provider": "jina",
     "llm_provider": "vertex",
     "step_sleep": 500
   },

@@ -1,10 +1,10 @@
-import axios from 'axios';
 import {BRAVE_API_KEY} from "../config";
+import axiosClient from "../utils/axios-client";
 
 import { BraveSearchResponse } from '../types';
 
 export async function braveSearch(query: string): Promise<{ response: BraveSearchResponse }> {
-  const response = await axios.get<BraveSearchResponse>('https://api.search.brave.com/res/v1/web/search', {
+  const response = await axiosClient.get<BraveSearchResponse>('https://api.search.brave.com/res/v1/web/search', {
     params: {
       q: query,
       count: 10,

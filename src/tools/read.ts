@@ -1,7 +1,7 @@
-import axios from 'axios';
 import { TokenTracker } from "../utils/token-tracker";
 import { ReadResponse } from '../types';
 import { JINA_API_KEY } from "../config";
+import axiosClient from "../utils/axios-client";
 
 export async function readUrl(
   url: string,
@@ -36,7 +36,7 @@ export async function readUrl(
 
   try {
     // Use axios which handles encoding properly
-    const { data } = await axios.post<ReadResponse>(
+    const { data } = await axiosClient.post<ReadResponse>(
       'https://r.jina.ai/',
       { url },
       {
@@ -65,28 +65,8 @@ export async function readUrl(
     });
 
     return { response: data };
-  } catch (error) {
-    // Handle axios errors with better type safety
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        const status = error.response.status;
-        const errorData = error.response.data as any;
-
-        if (status === 402) {
-          throw new Error(errorData?.readableMessage || 'Insufficient balance');
-        }
-        throw new Error(errorData?.readableMessage || `HTTP Error ${status}`);
-      } else if (error.request) {
-        // The request was made but no response was received
-        throw new Error('No response received from server');
-      } else {
-        // Something happened in setting up the request
-        throw new Error(`Request failed: ${error.message}`);
-      }
-    }
-    // For non-axios errors
+  } catch (error: any) {
+    console.error(`Error reading URL: ${error.message}`);
     throw error;
   }
 }

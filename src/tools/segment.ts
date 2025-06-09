@@ -1,7 +1,7 @@
-import axios from 'axios';
 import {TokenTracker} from "../utils/token-tracker";
 import {JINA_API_KEY} from "../config";
 import {TrackerContext} from "../types";
+import axiosClient from "../utils/axios-client";
 
 export async function segmentText(
   content: string,
@@ -39,7 +39,7 @@ export async function segmentText(
     console.log(`[Segment] Processing batch ${i + 1}/${batches.length} (size: ${batch.length})`);
 
     try {
-      const {data} = await axios.post(
+      const {data} = await axiosClient.post(
         'https://api.jina.ai/v1/segment',
         {
           content: batch,
@@ -84,8 +84,9 @@ export async function segmentText(
         positions: adjustedPositions,
         tokens: data.usage?.tokens || 0
       };
-    } catch (error) {
-      handleSegmentationError(error);
+    } catch (error: any) {
+      console.error(`Error processing batch ${i + 1}: ${error.message}`);
+      throw error;
     }
   });
 
@@ -178,26 +179,4 @@ function findLastSentenceBreak(text: string, startIndex: number, endIndex: numbe
     }
   }
   return -1; // No sentence break found
-}
-
-/**
- * Handles errors from the segmentation API
- */
-function handleSegmentationError(error: any): never {
-  if (axios.isAxiosError(error)) {
-    if (error.response) {
-      const status = error.response.status;
-      const errorData = error.response.data;
-
-      if (status === 402) {
-        throw new Error(errorData?.readableMessage || 'Insufficient balance');
-      }
-      throw new Error(errorData?.readableMessage || `HTTP Error ${status}`);
-    } else if (error.request) {
-      throw new Error('No response received from server');
-    } else {
-      throw new Error(`Request failed: ${error.message}`);
-    }
-  }
-  throw error;
 }

@@ -1,11 +1,11 @@
-import axios from 'axios';
 import {SERPER_API_KEY} from "../config";
+import axiosClient from "../utils/axios-client";
 
 import {SerperSearchResponse, SERPQuery} from '../types';
 
 
 export async function serperSearch(query: SERPQuery): Promise<{ response: SerperSearchResponse }> {
-  const response = await axios.post<SerperSearchResponse>('https://google.serper.dev/search', {
+  const response = await axiosClient.post<SerperSearchResponse>('https://google.serper.dev/search', {
     ...query,
     autocorrect: false,
   }, {
@@ -26,7 +26,7 @@ export async function serperSearch(query: SERPQuery): Promise<{ response: Serper
 
 
 export async function serperSearchOld(query: string): Promise<{ response: SerperSearchResponse }> {
-  const response = await axios.post<SerperSearchResponse>('https://google.serper.dev/search', {
+  const response = await axiosClient.post<SerperSearchResponse>('https://google.serper.dev/search', {
     q: query,
     autocorrect: false,
   }, {

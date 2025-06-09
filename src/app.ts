@@ -13,6 +13,7 @@ import {TokenTracker} from "./utils/token-tracker";
 import {ActionTracker} from "./utils/action-tracker";
 import {ObjectGeneratorSafe} from "./utils/safe-generator";
 import {jsonSchema} from "ai"; // or another converter library
+import {normalizeHostName} from "./utils/url-tools";
 
 const app = express();
 
@@ -370,13 +371,19 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     }
   }
 
+  const clientIp = req.headers['cf-connecting-ip'] || 
+                   req.headers['x-forwarded-for'] || 
+                   req.ip || 
+                   req.socket.remoteAddress || 
+                   'unknown';
   // Log request details (excluding sensitive data)
   console.log('[chat/completions] Request:', {
     model: req.body.model,
     stream: req.body.stream,
     messageCount: req.body.messages?.length,
     hasAuth: !!req.headers.authorization,
-    requestId: Date.now().toString()
+    requestId: Date.now().toString(),
+    clientIp: clientIp,
   });
 
   const body = req.body as ChatCompletionRequest;
@@ -557,11 +564,12 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       body.messages,
       body.max_returned_urls,
       body.no_direct_answer,
-      body.boost_hostnames,
-      body.bad_hostnames,
-      body.only_hostnames,
+      body.boost_hostnames?.map(i => normalizeHostName(i)),
+      body.bad_hostnames?.map(i => normalizeHostName(i)),
+      body.only_hostnames?.map(i => normalizeHostName(i)),
       body.max_annotations,
       body.min_annotation_relevance,
+      body.language_code,
       body.with_images,
       )
     let finalAnswer = (finalStep as AnswerAction).mdAnswer;

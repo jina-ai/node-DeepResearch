@@ -1,15 +1,15 @@
-import {ZodObject} from 'zod';
-import {CoreMessage} from 'ai';
-import {SEARCH_PROVIDER, STEP_SLEEP} from "./config";
+import { ZodObject } from 'zod';
+import { CoreMessage } from 'ai';
+import { SEARCH_PROVIDER, STEP_SLEEP } from "./config";
 import fs from 'fs/promises';
-import {SafeSearchType, search as duckSearch} from "duck-duck-scrape";
-import {braveSearch} from "./tools/brave-search";
-import {rewriteQuery} from "./tools/query-rewriter";
-import {dedupQueries} from "./tools/jina-dedup";
-import {evaluateAnswer, evaluateQuestion} from "./tools/evaluator";
-import {analyzeSteps} from "./tools/error-analyzer";
-import {TokenTracker} from "./utils/token-tracker";
-import {ActionTracker} from "./utils/action-tracker";
+import { SafeSearchType, search as duckSearch } from "duck-duck-scrape";
+import { braveSearch } from "./tools/brave-search";
+import { rewriteQuery } from "./tools/query-rewriter";
+import { dedupQueries } from "./tools/jina-dedup";
+import { evaluateAnswer, evaluateQuestion } from "./tools/evaluator";
+import { analyzeSteps } from "./tools/error-analyzer";
+import { TokenTracker } from "./utils/token-tracker";
+import { ActionTracker } from "./utils/action-tracker";
 import {
   StepAction,
   AnswerAction,
@@ -20,13 +20,13 @@ import {
   ImageObject,
   ImageReference
 } from "./types";
-import {TrackerContext} from "./types";
-import {search} from "./tools/jina-search";
+import { TrackerContext } from "./types";
+import { search } from "./tools/jina-search";
 // import {grounding} from "./tools/grounding";
-import {zodToJsonSchema} from "zod-to-json-schema";
-import {ObjectGeneratorSafe} from "./utils/safe-generator";
-import {CodeSandbox} from "./tools/code-sandbox";
-import {serperSearch} from './tools/serper-search';
+import { zodToJsonSchema } from "zod-to-json-schema";
+import { ObjectGeneratorSafe } from "./utils/safe-generator";
+import { CodeSandbox } from "./tools/code-sandbox";
+import { serperSearch } from './tools/serper-search';
 import {
   addToAllURLs,
   rankURLs,
@@ -40,11 +40,11 @@ import {
   removeExtraLineBreaks,
   removeHTMLtags, repairMarkdownFinal, repairMarkdownFootnotesOuter
 } from "./utils/text-tools";
-import {MAX_QUERIES_PER_STEP, MAX_REFLECT_PER_STEP, MAX_URLS_PER_STEP, Schemas} from "./utils/schemas";
-import {formatDateBasedOnType, formatDateRange} from "./utils/date-tools";
-import {repairUnknownChars} from "./tools/broken-ch-fixer";
-import {reviseAnswer} from "./tools/md-fixer";
-import {buildImageReferences, buildReferences} from "./tools/build-ref";
+import { MAX_QUERIES_PER_STEP, MAX_REFLECT_PER_STEP, MAX_URLS_PER_STEP, Schemas } from "./utils/schemas";
+import { formatDateBasedOnType, formatDateRange } from "./utils/date-tools";
+import { repairUnknownChars } from "./tools/broken-ch-fixer";
+import { reviseAnswer } from "./tools/md-fixer";
+import { buildImageReferences, buildReferences } from "./tools/build-ref";
 
 async function sleep(ms: number) {
   const seconds = Math.ceil(ms / 1000);
@@ -56,7 +56,7 @@ function BuildMsgsFromKnowledge(knowledge: KnowledgeItem[]): CoreMessage[] {
   // build user, assistant pair messages from knowledge
   const messages: CoreMessage[] = [];
   knowledge.forEach(k => {
-    messages.push({role: 'user', content: k.question.trim()});
+    messages.push({ role: 'user', content: k.question.trim() });
     const aMsg = `
 ${k.updated && (k.type === 'url' || k.type === 'side-info') ? `
 <answer-datetime>
@@ -73,7 +73,7 @@ ${k.references[0]}
 
 ${k.answer}
       `.trim();
-    messages.push({role: 'assistant', content: removeExtraLineBreaks(aMsg)});
+    messages.push({ role: 'assistant', content: removeExtraLineBreaks(aMsg) });
   });
   return messages;
 }
@@ -98,7 +98,7 @@ ${p}
 </answer-requirements>` : ''}
     `.trim();
 
-  msgs.push({role: 'user', content: removeExtraLineBreaks(userContent)});
+  msgs.push({ role: 'user', content: removeExtraLineBreaks(userContent) });
   return msgs;
 }
 
@@ -241,12 +241,6 @@ ${actionSections.join('\n\n')}
 }
 
 
-const allContext: StepAction[] = [];  // all steps in the current session, including those leads to wrong results
-
-function updateContext(step: any) {
-  allContext.push(step)
-}
-
 async function updateReferences(thisStep: AnswerAction, allURLs: Record<string, SearchSnippet>) {
   thisStep.references = thisStep.references
     ?.filter(ref => ref?.url)
@@ -291,7 +285,7 @@ async function executeSearchQueries(
   const uniqQOnly = keywordsQueries.map(q => q.q);
   const newKnowledge: KnowledgeItem[] = [];
   const searchedQueries: string[] = [];
-  context.actionTracker.trackThink('search_for', SchemaGen.languageCode, {keywords: uniqQOnly.join(', ')});
+  context.actionTracker.trackThink('search_for', SchemaGen.languageCode, { keywords: uniqQOnly.join(', ') });
   let utilityScore = 0;
   for (const query of keywordsQueries) {
     let results: UnNormalizedSearchSnippet[] = [];
@@ -304,10 +298,10 @@ async function executeSearchQueries(
       console.log('Search query:', query);
       switch (SEARCH_PROVIDER) {
         case 'jina':
-          results = (await search(query.q, context.tokenTracker)).response?.data || [];
+          results = (await search(query, context.tokenTracker)).response?.data || [];
           break;
         case 'duck':
-          results = (await duckSearch(query.q, {safeSearch: SafeSearchType.STRICT})).results;
+          results = (await duckSearch(query.q, { safeSearch: SafeSearchType.STRICT })).results;
           break;
         case 'brave':
           results = (await braveSearch(query.q)).response.web?.results || [];
@@ -348,7 +342,7 @@ async function executeSearchQueries(
       utilityScore = utilityScore + addToAllURLs(r, allURLs);
       webContents[r.url] = {
         title: r.title,
-        full: r.description,
+        // full: r.description,
         chunks: [r.description],
         chunk_positions: [[0, r.description?.length]],
       }
@@ -366,7 +360,7 @@ async function executeSearchQueries(
   if (searchedQueries.length === 0) {
     if (onlyHostnames && onlyHostnames.length > 0) {
       console.log(`No results found for queries: ${uniqQOnly.join(', ')} on hostnames: ${onlyHostnames.join(', ')}`);
-      context.actionTracker.trackThink('hostnames_no_results', SchemaGen.languageCode, {hostnames: onlyHostnames.join(', ')});
+      context.actionTracker.trackThink('hostnames_no_results', SchemaGen.languageCode, { hostnames: onlyHostnames.join(', ') });
     }
   } else {
     console.log(`Utility/Queries: ${utilityScore}/${searchedQueries.length}`);
@@ -385,22 +379,28 @@ function includesEval(allChecks: RepeatEvaluationType[], evalType: EvaluationTyp
 }
 
 export async function getResponse(question?: string,
-                                  tokenBudget: number = 1_000_000,
-                                  maxBadAttempts: number = 2,
-                                  existingContext?: Partial<TrackerContext>,
-                                  messages?: Array<CoreMessage>,
-                                  numReturnedURLs: number = 100,
-                                  noDirectAnswer: boolean = false,
-                                  boostHostnames: string[] = [],
-                                  badHostnames: string[] = [],
-                                  onlyHostnames: string[] = [],
-                                  maxRef: number = 10,
-                                  minRelScore: number = 0.75,
-                                  with_images: boolean = false
+  tokenBudget: number = 1_000_000,
+  maxBadAttempts: number = 2,
+  existingContext?: Partial<TrackerContext>,
+  messages?: Array<CoreMessage>,
+  numReturnedURLs: number = 100,
+  noDirectAnswer: boolean = false,
+  boostHostnames: string[] = [],
+  badHostnames: string[] = [],
+  onlyHostnames: string[] = [],
+  maxRef: number = 10,
+  minRelScore: number = 0.75,
+  languageCode: string | undefined = undefined,
+  with_images: boolean = false
 ): Promise<{ result: StepAction; context: TrackerContext; visitedURLs: string[], readURLs: string[], allURLs: string[], allImages?: string[], imageReferences?: ImageReference[] }> {
 
   let step = 0;
   let totalStep = 0;
+  const allContext: StepAction[] = [];  // all steps in the current session, including those leads to wrong results
+
+  const updateContext = function(step: any) {
+    allContext.push(step);
+  }
 
   question = question?.trim() as string;
   // remove incoming system messages to avoid override
@@ -416,11 +416,11 @@ export async function getResponse(question?: string,
       question = lastContent.filter(c => c.type === 'text').pop()?.text || '';
     }
   } else {
-    messages = [{role: 'user', content: question.trim()}]
+    messages = [{ role: 'user', content: question.trim() }]
   }
 
   const SchemaGen = new Schemas();
-  await SchemaGen.setLanguage(question)
+  await SchemaGen.setLanguage(languageCode || question)
   const context: TrackerContext = {
     tokenTracker: existingContext?.tokenTracker || new TokenTracker(tokenBudget),
     actionTracker: existingContext?.actionTracker || new ActionTracker()
@@ -442,7 +442,7 @@ export async function getResponse(question?: string,
   let allowReflect = true;
   let allowCoding = false;
   let msgWithKnowledge: CoreMessage[] = [];
-  let thisStep: StepAction = {action: 'answer', answer: '', references: [], think: '', isFinal: false};
+  let thisStep: StepAction = { action: 'answer', answer: '', references: [], think: '', isFinal: false };
 
   const allURLs: Record<string, SearchSnippet> = {};
   const allWebContents: Record<string, WebContent> = {};
@@ -495,7 +495,7 @@ export async function getResponse(question?: string,
           } as RepeatEvaluationType
         })
       // force strict eval for the original question, at last, only once.
-      evaluationMetrics[currentQuestion].push({type: 'strict', numEvalsRequired: maxBadAttempts});
+      evaluationMetrics[currentQuestion].push({ type: 'strict', numEvalsRequired: maxBadAttempts });
     } else if (currentQuestion.trim() !== question) {
       evaluationMetrics[currentQuestion] = []
     }
@@ -524,7 +524,7 @@ export async function getResponse(question?: string,
     allowSearch = allowSearch && (weightedURLs.length < 50);  // disable search when too many urls already
 
     // generate prompt for this step
-    const {system, urlList} = getPrompt(
+    const { system, urlList } = getPrompt(
       diaryContext,
       allQuestions,
       allKeywords,
@@ -556,7 +556,7 @@ export async function getResponse(question?: string,
     console.log(`${currentQuestion}: ${thisStep.action} <- [${actionsStr}]`);
     console.log(thisStep)
 
-    context.actionTracker.trackAction({totalStep, thisStep, gaps});
+    context.actionTracker.trackAction({ totalStep, thisStep, gaps });
 
     // reset allow* to true
     allowAnswer = true;
@@ -603,7 +603,7 @@ export async function getResponse(question?: string,
       });
 
       console.log(currentQuestion, evaluationMetrics[currentQuestion])
-      let evaluation: EvaluationResponse = {pass: true, think: ''};
+      let evaluation: EvaluationResponse = { pass: true, think: '' };
       if (evaluationMetrics[currentQuestion].length > 0) {
         context.actionTracker.trackThink('eval_first', SchemaGen.languageCode)
         evaluation = await evaluateAnswer(
@@ -760,8 +760,8 @@ But then you realized you have asked them before. You decided to to think out of
       thisStep.searchRequests = chooseK((await dedupQueries(thisStep.searchRequests, [], context.tokenTracker)).unique_queries, MAX_QUERIES_PER_STEP);
 
       // do first search
-      const {searchedQueries, newKnowledge} = await executeSearchQueries(
-        thisStep.searchRequests.map(q => ({q})),
+      const { searchedQueries, newKnowledge } = await executeSearchQueries(
+        thisStep.searchRequests.map(q => ({ q })),
         context,
         allURLs,
         SchemaGen,
@@ -781,13 +781,13 @@ But then you realized you have asked them before. You decided to to think out of
       keywordsQueries = keywordsQueries = uniqQOnly.map(q => {
         const matches = keywordsQueries.filter(kq => kq.q === q);
         // if there are multiple matches, keep the original query as the wider search
-        return matches.length > 1 ? {q} : matches[0];
+        return matches.length > 1 ? { q } : matches[0];
       }) as SERPQuery[];
 
       let anyResult = false;
 
       if (keywordsQueries.length > 0) {
-        const {searchedQueries, newKnowledge} =
+        const { searchedQueries, newKnowledge } =
           await executeSearchQueries(
             keywordsQueries,
             context,
@@ -846,7 +846,7 @@ You decided to think out of the box or cut from a completely different angle.
       console.log(uniqueURLs)
 
       if (uniqueURLs.length > 0) {
-        const {urlResults, success} = await processURLs(
+        const { urlResults, success } = await processURLs(
           uniqueURLs,
           context,
           allKnowledge,
@@ -891,7 +891,7 @@ You decided to think out of the box or cut from a completely different angle.`);
       }
       allowRead = false;
     } else if (thisStep.action === 'coding' && thisStep.codingIssue) {
-      const sandbox = new CodeSandbox({allContext, URLs: weightedURLs.slice(0, 20), allKnowledge}, context, SchemaGen);
+      const sandbox = new CodeSandbox({ allContext, URLs: weightedURLs.slice(0, 20), allKnowledge }, context, SchemaGen);
       try {
         const result = await sandbox.solve(thisStep.codingIssue);
         allKnowledge.push({
@@ -942,7 +942,7 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
     // any answer is better than no answer, humanity last resort
     step++;
     totalStep++;
-    const {system} = getPrompt(
+    const { system } = getPrompt(
       diaryContext,
       allQuestions,
       allKeywords,
@@ -972,7 +972,7 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
     } as AnswerAction;
     // await updateReferences(thisStep, allURLs);
     (thisStep as AnswerAction).isFinal = true;
-    context.actionTracker.trackAction({totalStep, thisStep, gaps});
+    context.actionTracker.trackAction({ totalStep, thisStep, gaps });
   }
 
   const answerStep = thisStep as AnswerAction;
@@ -994,14 +994,15 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
           ),
           allURLs)));
 
-    const {answer, references} = await buildReferences(
+    const { answer, references } = await buildReferences(
       answerStep.answer,
       allWebContents,
       context,
       SchemaGen,
       80,
       maxRef,
-      minRelScore
+      minRelScore,
+      onlyHostnames
     );
 
     answerStep.answer = answer;
@@ -1009,11 +1010,7 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
     await updateReferences(answerStep, allURLs)
     answerStep.mdAnswer = repairMarkdownFootnotesOuter(buildMdFromAnswer(answerStep));
   } else {
-    answerStep.mdAnswer =
-      convertHtmlTablesToMd(
-        fixCodeBlockIndentation(
-          buildMdFromAnswer(answerStep))
-      );
+    answerStep.mdAnswer = buildMdFromAnswer(answerStep);
   }
 
   let imageReferences: any;
@@ -1040,16 +1037,16 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
 }
 
 async function storeContext(prompt: string, schema: any, memory: {
-                              allContext: StepAction[];
-                              allKeywords: string[];
-                              allQuestions: string[];
-                              allKnowledge: KnowledgeItem[];
-                              weightedURLs: BoostedSearchSnippet[];
-                              msgWithKnowledge: CoreMessage[];
-                            }
+  allContext: StepAction[];
+  allKeywords: string[];
+  allQuestions: string[];
+  allKnowledge: KnowledgeItem[];
+  weightedURLs: BoostedSearchSnippet[];
+  msgWithKnowledge: CoreMessage[];
+}
   , step: number) {
 
-  const {allContext, allKeywords, allQuestions, allKnowledge, weightedURLs, msgWithKnowledge} = memory;
+  const { allContext, allKeywords, allQuestions, allKnowledge, weightedURLs, msgWithKnowledge } = memory;
   if ((process as any).asyncLocalContext?.available?.()) {
 
     (process as any).asyncLocalContext.ctx.promptContext = {

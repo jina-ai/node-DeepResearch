@@ -26,9 +26,9 @@ program
       const { result } = await getResponse(
         query,
         parseInt(options.tokenBudget),
-        parseInt(options.maxAttempts)
+        parseInt(options.maxAttempts),
       );
-      
+
       if (result.action === 'answer') {
         console.log('\nAnswer:', result.answer);
         if (result.references?.length) {
