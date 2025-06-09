@@ -75,6 +75,20 @@ export interface TokenUsage {
   usage: LanguageModelUsage;
 }
 
+export interface ArxivSearchResponse {
+  results: Array<{
+    title: string;
+    snippet: string;
+    url: string;
+  }>;
+  meta: {
+    query: string;
+    num_results: number;
+    latency: number;
+    credits: number;
+  }
+}
+
 export interface SearchResponse {
   code: number;
   status: number;

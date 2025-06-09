@@ -33,15 +33,33 @@
         "maxTokens": 2000
       },
       "tools": {
-        "coder": { "temperature": 0.7 },
-        "searchGrounding": { "temperature": 0 },
-        "dedup": { "temperature": 0.1 },
-        "evaluator": {"temperature":  0.6, "maxTokens": 200},
+        "coder": {
+          "temperature": 0.7
+        },
+        "searchGrounding": {
+          "temperature": 0
+        },
+        "dedup": {
+          "temperature": 0.1
+        },
+        "evaluator": {
+          "temperature": 0.6,
+          "maxTokens": 200
+        },
         "errorAnalyzer": {},
-        "queryRewriter": { "temperature": 0.1 },
-        "agent": { "temperature": 0.7 },
-        "agentBeastMode": { "temperature": 0.7 },
-        "fallback": {"maxTokens": 8000, "model": "gemini-2.0-flash-lite"}
+        "queryRewriter": {
+          "temperature": 0.1
+        },
+        "agent": {
+          "temperature": 0.7
+        },
+        "agentBeastMode": {
+          "temperature": 0.7
+        },
+        "fallback": {
+          "maxTokens": 8000,
+          "model": "gemini-2.0-flash-lite"
+        }
       }
     },
     "openai": {
@@ -51,15 +69,29 @@
         "maxTokens": 8000
       },
       "tools": {
-        "coder": { "temperature": 0.7 },
-        "searchGrounding": { "temperature": 0 },
-        "dedup": { "temperature": 0.1 },
+        "coder": {
+          "temperature": 0.7
+        },
+        "searchGrounding": {
+          "temperature": 0
+        },
+        "dedup": {
+          "temperature": 0.1
+        },
         "evaluator": {},
         "errorAnalyzer": {},
-        "queryRewriter": { "temperature": 0.1 },
-        "agent": { "temperature": 0.7 },
-        "agentBeastMode": { "temperature": 0.7 },
-        "fallback": { "temperature": 0 }
+        "queryRewriter": {
+          "temperature": 0.1
+        },
+        "agent": {
+          "temperature": 0.7
+        },
+        "agentBeastMode": {
+          "temperature": 0.7
+        },
+        "fallback": {
+          "temperature": 0
+        }
       }
     }
   }

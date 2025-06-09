@@ -43,6 +43,7 @@ import { formatDateBasedOnType, formatDateRange } from "./utils/date-tools";
 import { repairUnknownChars } from "./tools/broken-ch-fixer";
 import { reviseAnswer } from "./tools/md-fixer";
 import { buildReferences } from "./tools/build-ref";
+import { arxivSearch } from './tools/arxiv-search';
 
 async function sleep(ms: number) {
   const seconds = Math.ceil(ms / 1000);
@@ -304,6 +305,9 @@ async function executeSearchQueries(
         case 'brave':
           results = (await braveSearch(query.q)).response.web?.results || [];
           break;
+        case 'arxiv':
+          results = (await arxivSearch(query)).response.results || [];
+          break;
         case 'serper':
           results = (await serperSearch(query)).response.organic || [];
           break;
@@ -395,7 +399,7 @@ export async function getResponse(question?: string,
   let totalStep = 0;
   const allContext: StepAction[] = [];  // all steps in the current session, including those leads to wrong results
 
-  const updateContext = function(step: any) {
+  const updateContext = function (step: any) {
     allContext.push(step);
   }
 
