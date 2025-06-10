@@ -660,7 +660,6 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         visitedURLs,
         readURLs,
         numURLs: allURLs.length,
-
         relatedImages
       };
       res.write(`data: ${JSON.stringify(finalChunk)}\n\n`);
@@ -701,6 +700,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         readURLs: response.readURLs,
         numURLs: allURLs.length,
         allImages: allImages?.length,
+        relatedImages: relatedImages?.length,
       });
 
       res.json(response);
