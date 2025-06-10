@@ -1,8 +1,8 @@
-import {KnowledgeItem, PromptPair, TrackerContext} from '../types';
-import {getKnowledgeStr} from "../utils/text-tools";
-import {getModel} from "../config";
-import {generateText} from "ai";
-import {Schemas} from "../utils/schemas";
+import { KnowledgeItem, PromptPair, TrackerContext } from '../types';
+import { getKnowledgeStr } from "../utils/text-tools";
+import { getModel } from "../config";
+import { generateText } from "ai";
+import { Schemas } from "../utils/schemas";
 
 
 function getPrompt(mdContent: string, allKnowledge: KnowledgeItem[], schema: Schemas): PromptPair {
@@ -12,15 +12,17 @@ function getPrompt(mdContent: string, allKnowledge: KnowledgeItem[], schema: Sch
   return {
     system: `You are a senior editor with multiple best-selling books and columns published in top magazines. You break conventional thinking, establish unique cross-disciplinary connections, and bring new perspectives to the user.
 
-Your task is to revise the provided markdown content (written by your junior intern) while preserving its original vibe, structure, delivering a polished and professional version.
+Your task is to revise the provided markdown content (written by your junior intern) while preserving its original vibe, delivering a polished and professional version.
 
 <structure>
 - Begin with a blunt, fact-driven, and unapologetically statement of the main question or issue you'll address
 - Develop your argument using a logical progression of ideas while allowing for occasional contemplative digressions that enrich the reader's understanding
-- Organize paragraphs with clear topic sentences but vary paragraph length to create rhythm and emphasis
+- Organize paragraphs with clear topic sentences but vary paragraph length to create rhythm and emphasis, do not use bullet points or numbered lists.
+- Use section headers (##, ###) to organize long content.
 - Present facts, quotes and data points with minimal hedging
 - Conclude with both a definitive statement of your position and a thought-provoking reflection that leaves readers pondering deeper implications and insane hot-takes.
 </structure>
+
 
 <language-style>
 - Balance factual precision with vivid, evocative descriptions
@@ -40,14 +42,12 @@ Your task is to revise the provided markdown content (written by your junior int
 </content-approach>
 
 <rules>
-1. Extend the content with 5W1H strategy and add more details to make it more informative and engaging. Use available knowledge to ground facts and fill in missing information.
-2. Fix any broken tables, lists, code blocks, footnotes, or formatting issues.
-3. Make sure nested lists are correctly indented, especially code blocks within the nested structure. Code block should be fenced with triple backticks, except HTML table.
+1. Avoid any bullet points or numbered lists, use natural language instead.
+2. Extend the content with 5W1H strategy and add more details to make it more informative and engaging. Use available knowledge to ground facts and fill in missing information.
+3. Fix any broken tables, lists, code blocks, footnotes, or formatting issues.
 4. Tables are good! But they must always in basic HTML table syntax with proper <table> <thead> <tr> <th> <td> without any CSS styling. STRICTLY AVOID any markdown table syntax. HTML Table should NEVER BE fenced with (\`\`\`html) triple backticks.
-5. Avoid over-using bullet points by elaborate deeply nested structure into natural language sections/paragraphs to make the content more readable. 
-6. Replace any obvious placeholders or Lorem Ipsum values such as "example.com" with the actual content derived from the knowledge.
-7. Conclusion section if exists should provide deep, unexpected insights, identifying hidden patterns and connections, and creating "aha moments.".
-8. Your output language must be the same as user input language.
+5. Replace any obvious placeholders or Lorem Ipsum values such as "example.com" with the actual content derived from the knowledge.
+6. Your output language must be the same as user input language.
 </rules>
 
 
@@ -59,7 +59,7 @@ IMPORTANT: Do not begin your response with phrases like "Sure", "Here is", "Belo
   }
 }
 
-const TOOL_NAME = 'md-fixer';
+const TOOL_NAME = 'mdFixer';
 
 export async function reviseAnswer(
   mdContent: string,
@@ -72,12 +72,12 @@ export async function reviseAnswer(
     trackers?.actionTracker.trackThink('final_answer', schema.languageCode)
 
     const result = await generateText({
-      model: getModel('agent'),
+      model: getModel(TOOL_NAME),
       system: prompt.system,
       prompt: prompt.user,
     });
 
-    trackers.tokenTracker.trackUsage('md-fixer', result.usage)
+    trackers.tokenTracker.trackUsage(TOOL_NAME, result.usage)
 
 
     console.log(TOOL_NAME, result.text);

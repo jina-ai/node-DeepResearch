@@ -39,15 +39,28 @@
         "maxTokens": 8000
       },
       "tools": {
-        "coder": { "maxTokens": 2000, "model": "gemini-2.0-flash-lite" },
+        "coder": {
+          "maxTokens": 2000,
+          "model": "gemini-2.0-flash-lite"
+        },
         "searchGrounding": {},
-        "dedup": { },
-        "evaluator": {"maxTokens": 2000 },
-        "errorAnalyzer": {"maxTokens": 1000},
-        "queryRewriter": {"maxTokens": 2000},
+        "dedup": {},
+        "evaluator": {
+          "maxTokens": 2000
+        },
+        "errorAnalyzer": {
+          "maxTokens": 1000
+        },
+        "queryRewriter": {
+          "maxTokens": 2000
+        },
         "agent": {},
         "agentBeastMode": {},
-        "fallback": {"maxTokens": 8000, "model": "gemini-2.0-flash-lite"}
+        "fallback": {
+          "maxTokens": 8000,
+          "model": "gemini-2.0-flash-lite"
+        },
+        "mdFixer": {}
       }
     },
     "openai": {
@@ -57,15 +70,30 @@
         "maxTokens": 8000
       },
       "tools": {
-        "coder": { "temperature": 0.7 },
-        "searchGrounding": { "temperature": 0 },
-        "dedup": { "temperature": 0.1 },
+        "coder": {
+          "temperature": 0.7
+        },
+        "searchGrounding": {
+          "temperature": 0
+        },
+        "dedup": {
+          "temperature": 0.1
+        },
         "evaluator": {},
         "errorAnalyzer": {},
-        "queryRewriter": { "temperature": 0.1 },
-        "agent": { "temperature": 0.7 },
-        "agentBeastMode": { "temperature": 0.7 },
-        "fallback": { "temperature": 0 }
+        "queryRewriter": {
+          "temperature": 0.1
+        },
+        "agent": {
+          "temperature": 0.7
+        },
+        "agentBeastMode": {
+          "temperature": 0.7
+        },
+        "fallback": {
+          "temperature": 0
+        },
+        "mdFixer": {}
       }
     }
   }

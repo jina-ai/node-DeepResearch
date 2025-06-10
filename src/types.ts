@@ -84,6 +84,20 @@ export interface TokenUsage {
   usage: LanguageModelUsage;
 }
 
+export interface JinaSearchResponse {
+  results: Array<{
+    title: string;
+    snippet: string;
+    url: string;
+  }>;
+  meta: {
+    query: string;
+    num_results: number;
+    latency: number;
+    credits: number;
+  }
+}
+
 export interface SearchResponse {
   code: number;
   status: number;
@@ -258,6 +272,7 @@ export interface ChatCompletionRequest {
 
   with_images?: boolean;
   language_code?: string;
+  search_provider?: string;
 }
 
 export interface URLAnnotation {

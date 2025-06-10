@@ -67,6 +67,7 @@ interface ToolConfig {
 }
 
 interface ToolOverrides {
+  model?: string;
   temperature?: number;
   maxTokens?: number;
 }
@@ -78,7 +79,7 @@ export function getToolConfig(toolName: ToolName): ToolConfig {
   const toolOverrides = providerConfig.tools[toolName] as ToolOverrides;
 
   return {
-    model: process.env.DEFAULT_MODEL_NAME || defaultConfig.model,
+    model: toolOverrides.model ?? defaultConfig.model,
     temperature: toolOverrides.temperature ?? defaultConfig.temperature,
     maxTokens: toolOverrides.maxTokens ?? defaultConfig.maxTokens
   };

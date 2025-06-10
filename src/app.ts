@@ -1,6 +1,6 @@
-import express, {Request, Response, RequestHandler} from 'express';
+import express, { Request, Response, RequestHandler } from 'express';
 import cors from 'cors';
-import {getResponse} from './agent';
+import { getResponse } from './agent';
 import {
   TrackerContext,
   ChatCompletionRequest,
@@ -9,11 +9,11 @@ import {
   AnswerAction,
   Model, StepAction, VisitAction,
 } from './types';
-import {TokenTracker} from "./utils/token-tracker";
-import {ActionTracker} from "./utils/action-tracker";
-import {ObjectGeneratorSafe} from "./utils/safe-generator";
-import {jsonSchema} from "ai"; // or another converter library
-import {normalizeHostName} from "./utils/url-tools";
+import { TokenTracker } from "./utils/token-tracker";
+import { ActionTracker } from "./utils/action-tracker";
+import { ObjectGeneratorSafe } from "./utils/safe-generator";
+import { jsonSchema } from "ai"; // or another converter library
+import { normalizeHostName } from "./utils/url-tools";
 
 const app = express();
 
@@ -28,7 +28,7 @@ app.use(express.json({
 
 // Add health check endpoint for Docker container verification
 app.get('/health', (req, res) => {
-  res.json({status: 'ok'});
+  res.json({ status: 'ok' });
 });
 
 async function* streamTextNaturally(text: string, streamingState: StreamingState) {
@@ -192,7 +192,7 @@ async function emitRemainingContent(
     system_fingerprint: 'fp_' + requestId,
     choices: [{
       index: 0,
-      delta: {content, type: "think"},
+      delta: { content, type: "think" },
       logprobs: null,
       finish_reason: null
     }],
@@ -222,12 +222,12 @@ function getTokenBudgetAndMaxAttempts(
 
   switch (reasoningEffort) {
     case 'low':
-      return {tokenBudget: 100000, maxBadAttempts: 1};
+      return { tokenBudget: 100000, maxBadAttempts: 1 };
     case 'high':
-      return {tokenBudget: 1000000, maxBadAttempts: 2};
+      return { tokenBudget: 1000000, maxBadAttempts: 2 };
     case 'medium':
     default:
-      return {tokenBudget: 500000, maxBadAttempts: 1};
+      return { tokenBudget: 500000, maxBadAttempts: 1 };
   }
 }
 
@@ -263,7 +263,14 @@ app.get('/v1/models', (async (_req: Request, res: Response) => {
     object: 'model',
     created: 1686935002,
     owned_by: 'jina-ai'
-  }];
+  },
+  {
+    id: 'jina-deepsearch-v2',
+    object: 'model',
+    created: 1717987200,
+    owned_by: 'jina-ai'
+  }
+  ];
 
   res.json({
     object: 'list',
@@ -279,6 +286,13 @@ app.get('/v1/models/:model', (async (req: Request, res: Response) => {
       id: 'jina-deepsearch-v1',
       object: 'model',
       created: 1686935002,
+      owned_by: 'jina-ai'
+    });
+  } else if (modelId === 'jina-deepsearch-v2') {
+    res.json({
+      id: 'jina-deepsearch-v2',
+      object: 'model',
+      created: 1717987200,
       owned_by: 'jina-ai'
     });
   } else {
@@ -299,7 +313,7 @@ if (secret) {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== secret) {
       console.log('[chat/completions] Unauthorized request');
-      res.status(401).json({error: 'Unauthorized'});
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
@@ -338,7 +352,7 @@ async function processQueue(streamingState: StreamingState, res: Response, reque
           system_fingerprint: 'fp_' + requestId,
           choices: [{
             index: 0,
-            delta: {content: word, type: 'think'},
+            delta: { content: word, type: 'think' },
             logprobs: null,
             finish_reason: null
           }]
@@ -366,16 +380,16 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== secret) {
       console.log('[chat/completions] Unauthorized request');
-      res.status(401).json({error: 'Unauthorized'});
+      res.status(401).json({ error: 'Unauthorized' });
       return;
     }
   }
 
-  const clientIp = req.headers['cf-connecting-ip'] || 
-                   req.headers['x-forwarded-for'] || 
-                   req.ip || 
-                   req.socket.remoteAddress || 
-                   'unknown';
+  const clientIp = req.headers['cf-connecting-ip'] ||
+    req.headers['x-forwarded-for'] ||
+    req.ip ||
+    req.socket.remoteAddress ||
+    'unknown';
   // Log request details (excluding sensitive data)
   console.log('[chat/completions] Request:', {
     model: req.body.model,
@@ -388,11 +402,11 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
 
   const body = req.body as ChatCompletionRequest;
   if (!body.messages?.length) {
-    return res.status(400).json({error: 'Messages array is required and must not be empty'});
+    return res.status(400).json({ error: 'Messages array is required and must not be empty' });
   }
   const lastMessage = body.messages[body.messages.length - 1];
   if (lastMessage.role !== 'user') {
-    return res.status(400).json({error: 'Last message must be from user'});
+    return res.status(400).json({ error: 'Last message must be from user' });
   }
 
   console.log('messages', JSON.stringify(body.messages));
@@ -441,7 +455,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
     return true; // Keep other messages
   });
 
-  let {tokenBudget, maxBadAttempts} = getTokenBudgetAndMaxAttempts(
+  let { tokenBudget, maxBadAttempts } = getTokenBudgetAndMaxAttempts(
     body.reasoning_effort,
     body.max_completion_tokens
   );
@@ -460,7 +474,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       responseSchema = jsonSchema(body.response_format.json_schema);
       console.log(responseSchema)
     } catch (error: any) {
-      return res.status(400).json({error: `Invalid JSON schema: ${error.message}`});
+      return res.status(400).json({ error: `Invalid JSON schema: ${error.message}` });
     }
   }
 
@@ -496,7 +510,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       system_fingerprint: 'fp_' + requestId,
       choices: [{
         index: 0,
-        delta: {role: 'assistant', content: '<think>', type: 'think'},
+        delta: { role: 'assistant', content: '<think>', type: 'think' },
         logprobs: null,
         finish_reason: null
       }]
@@ -517,7 +531,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
             system_fingerprint: 'fp_' + requestId,
             choices: [{
               index: 0,
-              delta: {type: 'think', url},
+              delta: { type: 'think', url },
               logprobs: null,
               finish_reason: null,
             }]
@@ -570,8 +584,9 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
       body.max_annotations,
       body.min_annotation_relevance,
       body.language_code,
+      body.search_provider,
       body.with_images,
-      )
+    )
     let finalAnswer = (finalStep as AnswerAction).mdAnswer;
 
     const annotations = (finalStep as AnswerAction).references?.map(ref => ({
@@ -616,7 +631,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         system_fingerprint: 'fp_' + requestId,
         choices: [{
           index: 0,
-          delta: {content: `</think>\n\n`, type: 'think'},
+          delta: { content: `</think>\n\n`, type: 'think' },
           logprobs: null,
           finish_reason: 'thinking_end'
         }]
@@ -718,7 +733,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         system_fingerprint: 'fp_' + requestId,
         choices: [{
           index: 0,
-          delta: {content: '</think>', type: 'think'},
+          delta: { content: '</think>', type: 'think' },
           logprobs: null,
           finish_reason: 'error'
         }],
@@ -735,7 +750,7 @@ app.post('/v1/chat/completions', (async (req: Request, res: Response) => {
         system_fingerprint: 'fp_' + requestId,
         choices: [{
           index: 0,
-          delta: {content: errorMessage, type: 'error'},
+          delta: { content: errorMessage, type: 'error' },
           logprobs: null,
           finish_reason: 'error'
         }],

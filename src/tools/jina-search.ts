@@ -1,43 +1,47 @@
 import { TokenTracker } from "../utils/token-tracker";
-import { SearchResponse, SERPQuery } from '../types';
+import { JinaSearchResponse, SERPQuery } from '../types';
 import { JINA_API_KEY } from "../config";
 import axiosClient from '../utils/axios-client';
 
 export async function search(
   query: SERPQuery,
+  domain?: string,
+  num?: number,
   tracker?: TokenTracker
-): Promise<{ response: SearchResponse }> {
+): Promise<{ response: JinaSearchResponse }> {
   try {
-    const { data } = await axiosClient.post<SearchResponse>(
-      `https://s.jina.ai/`,
-      query,
+    if (domain !== 'arxiv') {
+      domain = undefined;  // default to general search
+    }
+
+    const { data } = await axiosClient.post<JinaSearchResponse>(
+      `https://svip.jina.ai/`,
+      {
+        ...query,
+        domain,
+        num
+      },
       {
         headers: {
           'Accept': 'application/json',
           'Authorization': `Bearer ${JINA_API_KEY}`,
-          'X-Respond-With': 'no-content',
         },
         timeout: 10000,
         responseType: 'json'
       }
     );
 
-    if (!data.data || !Array.isArray(data.data)) {
+    if (!data.results || !Array.isArray(data.results)) {
       throw new Error('Invalid response format');
     }
 
-    const totalTokens = data.data.reduce(
-      (sum, item) => sum + (item.usage?.tokens || 0),
-      0
-    );
-
-    console.log('Total URLs:', data.data.length);
+    console.log('Search results meta:', data.meta);
 
     const tokenTracker = tracker || new TokenTracker();
     tokenTracker.trackUsage('search', {
-      totalTokens,
+      totalTokens: data.meta.credits,
       promptTokens: query.q.length,
-      completionTokens: totalTokens
+      completionTokens: 0
     });
 
     return { response: data };

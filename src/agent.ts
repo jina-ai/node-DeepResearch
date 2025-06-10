@@ -42,7 +42,6 @@ import {
 } from "./utils/text-tools";
 import { MAX_QUERIES_PER_STEP, MAX_REFLECT_PER_STEP, MAX_URLS_PER_STEP, Schemas } from "./utils/schemas";
 import { formatDateBasedOnType, formatDateRange } from "./utils/date-tools";
-import { repairUnknownChars } from "./tools/broken-ch-fixer";
 import { reviseAnswer } from "./tools/md-fixer";
 import { buildImageReferences, buildReferences } from "./tools/build-ref";
 
@@ -277,7 +276,8 @@ async function executeSearchQueries(
   allURLs: Record<string, SearchSnippet>,
   SchemaGen: Schemas,
   webContents: Record<string, WebContent>,
-  onlyHostnames?: string[]
+  onlyHostnames?: string[],
+  searchProvider?: string
 ): Promise<{
   newKnowledge: KnowledgeItem[],
   searchedQueries: string[]
@@ -296,9 +296,10 @@ async function executeSearchQueries(
 
     try {
       console.log('Search query:', query);
-      switch (SEARCH_PROVIDER) {
+      switch (searchProvider || SEARCH_PROVIDER) {
         case 'jina':
-          results = (await search(query, context.tokenTracker)).response?.data || [];
+        case 'arxiv':
+          results = (await search(query, searchProvider, 30, context.tokenTracker)).response.results || [];
           break;
         case 'duck':
           results = (await duckSearch(query.q, { safeSearch: SafeSearchType.STRICT })).results;
@@ -391,6 +392,7 @@ export async function getResponse(question?: string,
   maxRef: number = 10,
   minRelScore: number = 0.75,
   languageCode: string | undefined = undefined,
+  searchProvider?: string,
   with_images: boolean = false
 ): Promise<{ result: StepAction; context: TrackerContext; visitedURLs: string[], readURLs: string[], allURLs: string[], allImages?: string[], relatedImages?: string[] }> {
 
@@ -398,7 +400,7 @@ export async function getResponse(question?: string,
   let totalStep = 0;
   const allContext: StepAction[] = [];  // all steps in the current session, including those leads to wrong results
 
-  const updateContext = function(step: any) {
+  const updateContext = function (step: any) {
     allContext.push(step);
   }
 
@@ -515,6 +517,7 @@ export async function getResponse(question?: string,
           question: currentQuestion,
           boostHostnames
         }, context);
+
       // improve diversity by keep top 2 urls of each hostname
       weightedURLs = keepKPerHostname(weightedURLs, 2);
       console.log('Weighted URLs:', weightedURLs.length);
@@ -765,7 +768,9 @@ But then you realized you have asked them before. You decided to to think out of
         context,
         allURLs,
         SchemaGen,
-        allWebContents
+        allWebContents,
+        undefined,
+        searchProvider
       );
 
       allKeywords.push(...searchedQueries);
@@ -794,7 +799,8 @@ But then you realized you have asked them before. You decided to to think out of
             allURLs,
             SchemaGen,
             allWebContents,
-            onlyHostnames
+            onlyHostnames,
+            searchProvider
           );
 
         if (searchedQueries.length > 0) {
@@ -984,13 +990,13 @@ But unfortunately, you failed to solve the issue. You need to think out of the b
         fixBadURLMdLinks(
           fixCodeBlockIndentation(
             repairMarkdownFootnotesOuter(
-              await repairUnknownChars(
-                await reviseAnswer(
-                  answerStep.answer,
-                  allKnowledge,
-                  context,
-                  SchemaGen),
-                context))
+              await reviseAnswer(
+                answerStep.answer,
+                allKnowledge,
+                context,
+                SchemaGen
+              )
+            )
           ),
           allURLs)));
 
