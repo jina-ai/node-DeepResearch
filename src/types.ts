@@ -272,6 +272,7 @@ export interface ChatCompletionRequest {
 
   with_images?: boolean;
   language_code?: string;
+  search_language_code?: string;
   search_provider?: string;
 }
 

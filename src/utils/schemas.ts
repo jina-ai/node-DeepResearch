@@ -96,6 +96,7 @@ const languageISO6391Map: Record<string, string> = {
 export class Schemas {
   public languageStyle: string = 'formal English';
   public languageCode: string = 'en';
+  public searchLanguageCode: string | undefined = undefined;
 
 
   async setLanguage(query: string) {
@@ -162,7 +163,7 @@ export class Schemas {
         z.object({
           tbs: z.enum(['qdr:h', 'qdr:d', 'qdr:w', 'qdr:m', 'qdr:y']).describe('time-based search filter, must use this field if the search request asks for latest info. qdr:h for past hour, qdr:d for past 24 hours, qdr:w for past week, qdr:m for past month, qdr:y for past year. Choose exactly one.'),
           location: z.string().describe('defines from where you want the search to originate. It is recommended to specify location at the city level in order to simulate a real user’s search.').optional(),
-          q: z.string().describe('keyword-based search query, 2-3 words preferred, total length < 30 characters').max(50),
+          q: z.string().describe(`keyword-based search query, 2-3 words preferred, total length < 30 characters. ${this.searchLanguageCode ? `Must in ${this.searchLanguageCode}` : ''}`).max(50),
         }))
         .max(MAX_QUERIES_PER_STEP)
         .describe(`'Array of search keywords queries, orthogonal to each other. Maximum ${MAX_QUERIES_PER_STEP} queries allowed.'`)
