@@ -1,10 +1,9 @@
-import canvas from '@napi-rs/canvas';
 import { getEmbeddings } from '../tools/embeddings';
 import { TokenTracker } from './token-tracker';
 import { ImageObject } from '../types';
 import { cosineSimilarity } from '../tools/cosine';
 import { logInfo, logError, logDebug, logWarning } from '../logging';
-export type { Canvas, Image } from '@napi-rs/canvas';
+import sharp from 'sharp';
 
 export const downloadFile = async (uri: string) => {
   const resp = await fetch(uri);
@@ -16,13 +15,17 @@ export const downloadFile = async (uri: string) => {
     throw new Error('File too large');
   }
   const buff = await resp.arrayBuffer();
+  const contentType = resp.headers.get('content-type');
+  if (!contentType || !contentType.startsWith('image/')) {
+    throw new Error(`Invalid content type ${contentType}, expected image/*`);
+  }
 
-  return { buff, contentType: resp.headers.get('content-type') };
+  return { buff, contentType };
 };
 
-const _loadImage = async (input: string | Buffer) => {
+const loadImage = async (input: string | Buffer) => {
   let buff;
-  let contentType;
+  let contentType: string = '';
 
   if (typeof input === 'string') {
     if (input.startsWith('data:')) {
@@ -51,72 +54,64 @@ const _loadImage = async (input: string | Buffer) => {
     throw new Error('Invalid input');
   }
 
-  const img = await canvas.loadImage(buff).catch((err) => {
-    logError('Error loading image:', { error: err });
-    return undefined;
-  });
+  if (buff.length > 20 * 1024 * 1024) {
+    throw new Error('Image too large');
+  }
 
-  return img;
+  return {
+    buff,
+    contentType,
+  };
 }
 
-export const loadImage = async (uri: string | Buffer) => {
-  try {
-    const theImage = await _loadImage(uri);
+const ImageTypes = ['png', 'jpeg', 'jpg', 'webp', 'avif', 'tiff', 'gif', 'svg', 'bmp', 'heif', 'jxl', 'jp2', 'ppm', 'raw', 'exr', 'fits', 'rad'];
 
-    return theImage;
-  } catch (err: any) {
-    if (err?.message?.includes('Unsupported image type') || err?.message?.includes('unsupported')) {
-      throw new Error(`Unknown image format for ${uri.slice(0, 128)}`);
+export const fitImageToSquareBox = async (imageBuffer: Buffer, contentType: string, size: number = 1024) => {
+  if (!imageBuffer || imageBuffer.length === 0) {
+    throw new Error('Invalid image buffer');
+  }
+
+  const metadata = await sharp(imageBuffer).metadata();
+  if (!metadata.width || !metadata.height || metadata.width < 256 || metadata.height < 256) {
+    throw new Error('Image must be at least 256x256 pixels');
+  }
+
+  let width = metadata.width;
+  let height = metadata.height;
+  const targetSize = size;
+  const imageType = contentType.split('/')[1];
+  if (!ImageTypes.includes(imageType)) {
+    throw new Error(`Unsupported image type: ${imageType}`);
+  }
+  
+  if (width > targetSize || height > targetSize) {
+    const aspectRatio = width / height;
+    
+    if (aspectRatio > 1) {
+      width = targetSize;
+      height = Math.round(targetSize / aspectRatio);
+    } else {
+      height = targetSize;
+      width = Math.round(targetSize * aspectRatio);
     }
-    throw err;
   }
-}
+  
+  const resizedImageBuffer = await sharp(imageBuffer)
+    .resize(width, height, {
+      fit: 'inside',
+      withoutEnlargement: true
+    })
+    .toFormat(imageType as any)
+    .toBuffer();
 
-export const fitImageToSquareBox = (image: canvas.Image | canvas.Canvas, size: number = 1024) => {
-  if (image.width <= size && image.height <= size) {
-    const canvasInstance = canvas.createCanvas(image.width, image.height);
-    const ctx = canvasInstance.getContext('2d');
-    ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, canvasInstance.width, canvasInstance.height);
-
-    return canvasInstance;
-  }
-
-  const aspectRatio = image.width / image.height;
-
-  const resizedWidth = Math.round(aspectRatio > 1 ? size : size * aspectRatio);
-  const resizedHeight = Math.round(aspectRatio > 1 ? size / aspectRatio : size);
-
-  const canvasInstance = canvas.createCanvas(resizedWidth, resizedHeight);
-  const ctx = canvasInstance.getContext('2d');
-  ctx.drawImage(image, 0, 0, image.width, image.height, 0, 0, resizedWidth, resizedHeight);
-
-  return canvasInstance;
-}
-
-
-export const canvasToDataUrl = (canvas: canvas.Canvas, mimeType?: 'image/png' | 'image/jpeg') => {
-  return canvas.toDataURLAsync((mimeType || 'image/png') as 'image/png');
-}
-
-export const canvasToBuffer = (canvas: canvas.Canvas, mimeType?: 'image/png' | 'image/jpeg') => {
-  return canvas.toBuffer((mimeType || 'image/png') as 'image/png');
+  return resizedImageBuffer.toString('base64');
 }
 
 export const processImage = async (url: string, tracker: TokenTracker): Promise<ImageObject | undefined> => {
   try {
-    const img = await loadImage(url);
-    if (!img) {
-      return;
-    }
+    const { buff, contentType } = await loadImage(url);
+    const base64Data = await fitImageToSquareBox(buff, contentType, 256);
 
-    // Check if the image is smaller than 256x256
-    if (img.width < 256 || img.height < 256) {
-      return;
-    }
-
-    const canvas = fitImageToSquareBox(img, 256);
-    const base64Data = (await canvasToDataUrl(canvas)).split(',')[1];
-    img.src = ''; // Clear the image source to free memory
 
     const { embeddings } = await getEmbeddings([{ image: base64Data }], tracker, {
       dimensions: 512,

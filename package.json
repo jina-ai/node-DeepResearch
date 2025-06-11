@@ -28,7 +28,6 @@
   "dependencies": {
     "@ai-sdk/google": "^1.0.0",
     "@ai-sdk/openai": "^1.1.9",
-    "@napi-rs/canvas": "^0.1.68",
     "@types/jsdom": "^21.1.7",
     "ai": "^4.1.26",
     "axios": "^1.7.9",
@@ -40,6 +39,7 @@
     "hjson": "^3.2.2",
     "jsdom": "^26.0.0",
     "node-fetch": "^3.3.2",
+    "sharp": "^0.34.2",
     "undici": "^7.3.0",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.24.1"
