@@ -116,7 +116,6 @@ export const processImage = async (url: string, tracker: TokenTracker): Promise<
 
     const canvas = fitImageToSquareBox(img, 256);
     const base64Data = (await canvasToDataUrl(canvas)).split(',')[1];
-    img.src = ''; // Clear the image source to free memory
 
     const { embeddings } = await getEmbeddings([{ image: base64Data }], tracker, {
       dimensions: 512,
