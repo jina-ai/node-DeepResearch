@@ -31,7 +31,8 @@ export class TokenTracker extends EventEmitter {
 
   getTotalUsage(): LanguageModelUsage {
     return this.usages.reduce((acc, { usage }) => {
-      const scaler = usage.completionTokens === 0 ? 1 : 3;
+      // CompletionTokens > 0 means LLM usage, apply 3x multiplier
+      const scaler = usage.completionTokens > 0 ? 3 : 1;
       acc.promptTokens += usage.promptTokens * scaler;
       acc.completionTokens += usage.completionTokens * scaler;
       acc.totalTokens += usage.totalTokens * scaler;
