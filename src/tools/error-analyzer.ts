@@ -1,7 +1,7 @@
 import { ErrorAnalysisResponse, PromptPair, TrackerContext } from '../types';
 import { ObjectGeneratorSafe } from "../utils/safe-generator";
 import { Schemas } from "../utils/schemas";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logInfo, logError } from '../logging';
 
 
 function getPrompt(diaryContext: string[]): PromptPair {

@@ -2,7 +2,7 @@ import { generateText } from "ai";
 import { getModel } from "../config";
 import { TrackerContext } from "../types";
 import { detectBrokenUnicodeViaFileIO } from "../utils/text-tools";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logError, logDebug, logWarning } from '../logging';
 
 
 /**

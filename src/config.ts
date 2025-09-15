@@ -3,7 +3,7 @@ import { ProxyAgent, setGlobalDispatcher } from 'undici';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI, OpenAIProviderSettings } from '@ai-sdk/openai';
 import configJson from '../config.json';
-import { logInfo, logError, logDebug, logWarning } from './logging';
+import { logInfo, logError } from './logging';
 // Load environment variables
 dotenv.config();
 

@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig } from 'axios';
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logError } from '../logging';
 
 // Default timeout in milliseconds  
 const DEFAULT_TIMEOUT = 30000;

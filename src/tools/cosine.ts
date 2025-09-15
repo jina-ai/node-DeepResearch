@@ -1,4 +1,4 @@
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logWarning } from '../logging';
 
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   if (vecA.length !== vecB.length) {

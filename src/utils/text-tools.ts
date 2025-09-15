@@ -2,7 +2,7 @@ import { AnswerAction, KnowledgeItem, Reference } from "../types";
 import i18nJSON from './i18n.json';
 import { JSDOM } from 'jsdom';
 import fs from "fs/promises";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logError } from '../logging';
 
 
 export function buildMdFromAnswer(answer: AnswerAction): string {
@@ -916,7 +916,7 @@ export function extractNgrams(
 
   // Second pass: calculate PMI and filter
   const results: NgramResult[] = Array.from(ngramFreq.entries())
-    .filter(([ngram, freq]) => freq >= minFreq)
+    .filter(([, freq]) => freq >= minFreq)
     .map(([ngram, freq]) => {
       const pmi = isCJKText(ngram) ? 0 : calculatePMI(ngram, freq, wordFreq, totalNgrams);
       return { ngram, freq, pmi };
