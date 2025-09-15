@@ -31,9 +31,10 @@ export class TokenTracker extends EventEmitter {
 
   getTotalUsage(): LanguageModelUsage {
     return this.usages.reduce((acc, { usage }) => {
-      acc.promptTokens += usage.promptTokens;
-      acc.completionTokens += usage.completionTokens;
-      acc.totalTokens += usage.totalTokens;
+      const scaler = usage.completionTokens === 0 ? 1 : 3;
+      acc.promptTokens += usage.promptTokens * scaler;
+      acc.completionTokens += usage.completionTokens * scaler;
+      acc.totalTokens += usage.totalTokens * scaler;
       return acc;
     }, { promptTokens: 0, completionTokens: 0, totalTokens: 0 });
   }

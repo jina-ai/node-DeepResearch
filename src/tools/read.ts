@@ -58,7 +58,7 @@ export async function readUrl(
     tokenTracker.trackUsage('read', {
       totalTokens: tokens,
       promptTokens: url.length,
-      completionTokens: tokens
+      completionTokens: 0
     });
 
     return { response: data };
