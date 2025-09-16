@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 
 import { TokenUsage } from '../types';
 import { LanguageModelUsage } from "ai";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logInfo } from '../logging';
 
 export class TokenTracker extends EventEmitter {
   private usages: TokenUsage[] = [];

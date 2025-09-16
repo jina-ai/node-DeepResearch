@@ -1,7 +1,7 @@
 import { TokenTracker } from "../utils/token-tracker";
 import { JINA_API_KEY } from "../config";
 import axiosClient from '../utils/axios-client';
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logError, logDebug } from '../logging';
 
 const JINA_API_URL = 'https://api.jina.ai/v1/rerank';
 

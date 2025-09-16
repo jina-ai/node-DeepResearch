@@ -2,7 +2,7 @@ import { getEmbeddings } from '../tools/embeddings';
 import { TokenTracker } from './token-tracker';
 import { ImageObject, ImageReference } from '../types';
 import { cosineSimilarity } from '../tools/cosine';
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logInfo, logError, logWarning } from '../logging';
 import sharp from 'sharp';
 
 export const downloadFile = async (uri: string) => {

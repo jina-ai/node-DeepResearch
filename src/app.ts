@@ -15,7 +15,7 @@ import { ActionTracker } from "./utils/action-tracker";
 import { ObjectGeneratorSafe } from "./utils/safe-generator";
 import { jsonSchema } from "ai"; // or another converter library
 import { normalizeHostName } from "./utils/url-tools";
-import { logInfo, logError, logDebug, logWarning } from './logging';
+import { logInfo, logError, logDebug } from './logging';
 import { body, validationResult } from 'express-validator';
 
 const app = express();
