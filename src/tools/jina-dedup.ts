@@ -1,4 +1,4 @@
-import { logDebug, logError, logInfo } from "../logging";
+import { logError, logInfo } from "../logging";
 import { TokenTracker } from "../utils/token-tracker";
 import { cosineSimilarity } from "./cosine";
 import { getEmbeddings } from "./embeddings";

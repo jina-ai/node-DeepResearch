@@ -46,7 +46,6 @@ import { finalizeAnswer } from "./tools/finalizer";
 import { buildImageReferences, buildReferences } from "./tools/build-ref";
 import { logInfo, logError, logDebug, logWarning } from './logging';
 import { researchPlan } from './tools/research-planner';
-import { reduceAnswers } from './tools/reducer';
 import { AxiosError } from 'axios';
 import { dedupImagesWithEmbeddings, filterImages } from './utils/image-tools';
 import { serpCluster } from './tools/serp-cluster';
@@ -304,10 +303,11 @@ async function executeSearchQueries(
       logDebug('Search query:', { query });
       switch (searchProvider || SEARCH_PROVIDER) {
         case 'jina':
-        case 'arxiv':
+        case 'arxiv': {
           const num = meta ? undefined : 30;
           results = (await search(query, searchProvider, num, meta, context.tokenTracker)).response.results || [];
           break;
+        }
         case 'duck':
           results = (await duckSearch(query.q, { safeSearch: SafeSearchType.STRICT })).results;
           break;

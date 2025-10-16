@@ -7,7 +7,7 @@ import { GEMINI_API_KEY } from '../config';
 import { z } from 'zod';
 import { AnswerAction, TrackerContext } from "../types";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logInfo, logError } from '../logging';
 
 const execAsync = promisify(exec);
 

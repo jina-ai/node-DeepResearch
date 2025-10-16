@@ -3,7 +3,7 @@ import { AnswerAction, EvaluationResponse, EvaluationType, KnowledgeItem, Prompt
 import { ObjectGeneratorSafe } from "../utils/safe-generator";
 import { Schemas } from "../utils/schemas";
 import { getKnowledgeStr } from "../utils/text-tools";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logInfo, logError } from '../logging';
 
 const TOOL_NAME = 'evaluator';
 
