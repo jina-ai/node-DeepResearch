@@ -1,5 +1,8 @@
 # DeepResearch
 
+> [!NOTE]
+> This repository is included as a submodule in the [Ascend Groups monorepo](https://github.com/myascendai/ascend-groups) at `apps/ascend-jina-deep-research/`.
+
 [Official UI](https://search.jina.ai/) | [UI Code](https://github.com/jina-ai/deepsearch-ui) | [Stable API](https://jina.ai/deepsearch) | [Blog](https://jina.ai/news/a-practical-guide-to-implementing-deepsearch-deepresearch)
 
 Keep searching, reading webpages, reasoning until an answer is found (or the token budget is exceeded). Useful for deeply investigating a query.
@@ -288,46 +291,131 @@ Not sure a flowchart helps, but here it is:
 ```mermaid
 flowchart TD
     Start([Start]) --> Init[Initialize context & variables]
-    Init --> CheckBudget{Token budget<br/>exceeded?}
-    CheckBudget -->|No| GetQuestion[Get current question<br/>from gaps]
-    CheckBudget -->|Yes| BeastMode[Enter Beast Mode]
-
-    GetQuestion --> GenPrompt[Generate prompt]
-    GenPrompt --> ModelGen[Generate response<br/>using Gemini]
-    ModelGen --> ActionCheck{Check action<br/>type}
-
-    ActionCheck -->|answer| AnswerCheck{Is original<br/>question?}
-    AnswerCheck -->|Yes| EvalAnswer[Evaluate answer]
-    EvalAnswer --> IsGoodAnswer{Is answer<br/>definitive?}
-    IsGoodAnswer -->|Yes| HasRefs{Has<br/>references?}
-    HasRefs -->|Yes| End([End])
-    HasRefs -->|No| GetQuestion
-    IsGoodAnswer -->|No| StoreBad[Store bad attempt<br/>Reset context]
-    StoreBad --> GetQuestion
-
-    AnswerCheck -->|No| StoreKnowledge[Store as intermediate<br/>knowledge]
-    StoreKnowledge --> GetQuestion
-
-    ActionCheck -->|reflect| ProcessQuestions[Process new<br/>sub-questions]
-    ProcessQuestions --> DedupQuestions{New unique<br/>questions?}
-    DedupQuestions -->|Yes| AddGaps[Add to gaps queue]
-    DedupQuestions -->|No| DisableReflect[Disable reflect<br/>for next step]
-    AddGaps --> GetQuestion
-    DisableReflect --> GetQuestion
-
-    ActionCheck -->|search| SearchQuery[Execute search]
-    SearchQuery --> NewURLs{New URLs<br/>found?}
-    NewURLs -->|Yes| StoreURLs[Store URLs for<br/>future visits]
-    NewURLs -->|No| DisableSearch[Disable search<br/>for next step]
-    StoreURLs --> GetQuestion
-    DisableSearch --> GetQuestion
-
-    ActionCheck -->|visit| VisitURLs[Visit URLs]
-    VisitURLs --> NewContent{New content<br/>found?}
-    NewContent -->|Yes| StoreContent[Store content as<br/>knowledge]
-    NewContent -->|No| DisableVisit[Disable visit<br/>for next step]
-    StoreContent --> GetQuestion
-    DisableVisit --> GetQuestion
-
-    BeastMode --> FinalAnswer[Generate final answer] --> End
+    Init --> ExtractURLs[Extract URLs From Messages]
+    ExtractURLs --> CheckBudget{Token Budget<br/>NOT Exceeded?}
+    
+    CheckBudget -->|Yes| StepSetup[Set Up Step And Select Current Question]
+    CheckBudget -->|No| ExitLoop[Exit Loop]
+    
+    StepSetup --> IsFirstStep{Is First Step?}
+    IsFirstStep -->|Yes| SetupEvaluation[Set Up Evaluation Metrics]
+    IsFirstStep -->|No| IsSubQuestion{Is Sub Question?}
+    
+    IsSubQuestion -->|Yes| EmptyEvaluation[Set Empty Evaluation Metrics]
+    IsSubQuestion -->|No| ContinueSetup[Continue Setup]
+    
+    SetupEvaluation --> FreshnessCheck{Step 1 &<br/>Freshness Eval?}
+    EmptyEvaluation --> ContinueSetup
+    
+    FreshnessCheck -->|Yes| DisableFlags[Disable Answer & Reflect]
+    FreshnessCheck -->|No| ContinueSetup
+    DisableFlags --> ContinueSetup
+    
+    ContinueSetup --> ControlActions[Control Action Availability]
+    ControlActions --> GenPrompt[Generate Prompt And Schema]
+    GenPrompt --> ModelGen[Generate Response Using LLM]
+    ModelGen --> TrackAction[Track Action And Reset Flags]
+    TrackAction --> ActionSwitch{Select Action Type}
+    
+    %% Answer Flow
+    ActionSwitch -->|Answer| AnswerCheck{Step 1 &<br/>!noDirectAnswer?}
+    AnswerCheck -->|Yes| MarkTrivial[Mark Trivial And Break]
+    AnswerCheck -->|No| EvalAnswer[Evaluate Answer]
+    
+    EvalAnswer --> IsOriginal{Is Original Question?}
+    IsOriginal -->|Yes| EvalPass{Evaluation Pass?}
+    IsOriginal -->|No| SubPass{Evaluation Pass?}
+    
+    EvalPass -->|Yes| MarkFinal[Mark Final And Break]
+    EvalPass -->|No| DecrementEvals[Decrement Evals & Add To PIP]
+    
+    DecrementEvals --> EvalsExhausted{All Evals Exhausted?}
+    EvalsExhausted -->|Yes| MarkNotFinal[Mark Not Final And Break]
+    EvalsExhausted -->|No| AnalyzeErrors[Analyze Errors & Disable Answer]
+    
+    SubPass -->|Yes| StoreKnowledge[Store Knowledge & Remove Gap]
+    SubPass -->|No| ContinueLoop1[Continue Loop]
+    AnalyzeErrors --> ContinueLoop1
+    StoreKnowledge --> ContinueLoop1
+    
+    MarkTrivial --> ExitLoop
+    MarkFinal --> ExitLoop
+    MarkNotFinal --> ExitLoop
+    
+    %% Reflect Flow
+    ActionSwitch -->|Reflect| DedupReflect[Deduplicate Questions]
+    DedupReflect --> NewQs{New Unique Questions?}
+    NewQs -->|Yes| AddGaps[Add To Gaps]
+    NewQs -->|No| LogFail[Log Failure]
+    AddGaps --> DisableReflect[Disable Reflect]
+    LogFail --> DisableReflect
+    DisableReflect --> ContinueLoop2[Continue Loop]
+    
+    %% Search Flow
+    ActionSwitch -->|Search| DedupSearch[Deduplicate Search]
+    DedupSearch --> ExecSearch[Execute Search Queries]
+    ExecSearch --> TeamCheck{Team >1 &<br/>Multi-subproblems?}
+    
+    TeamCheck -->|Yes| TeamResearch[Research Plan & Recurse]
+    TeamResearch --> AggregateAnswers[Aggregate Answers]
+    AggregateAnswers --> TeamBreak[Break Loop]
+    TeamBreak --> ExitLoop
+    
+    TeamCheck -->|No| RewriteQueries[Rewrite Queries]
+    RewriteQueries --> ExecRewritten[Execute Rewritten]
+    ExecRewritten --> DisableSearch[Disable Search & Answer]
+    DisableSearch --> ContinueLoop3[Continue Loop]
+    
+    %% Visit Flow
+    ActionSwitch -->|Visit| NormalizeURLs[Normalize & Filter URLs]
+    NormalizeURLs --> ProcessPages[Process Pages]
+    ProcessPages --> UpdateVisit[Update Context]
+    UpdateVisit --> DisableVisit[Disable Visit]
+    DisableVisit --> ContinueLoop4[Continue Loop]
+    
+    %% Coding Flow
+    ActionSwitch -->|Coding| SolveCode[Solve Coding Issue]
+    SolveCode --> CodeSuccess{Success?}
+    CodeSuccess -->|Yes| StoreSolution[Store Solution]
+    CodeSuccess -->|No| LogCodeError[Log Error]
+    StoreSolution --> DisableCoding[Disable Coding]
+    LogCodeError --> DisableCoding
+    DisableCoding --> ContinueLoop5[Continue Loop]
+    
+    %% Loop Back
+    ContinueLoop1 --> StoreContext[Store Context]
+    ContinueLoop2 --> StoreContext
+    ContinueLoop3 --> StoreContext
+    ContinueLoop4 --> StoreContext
+    ContinueLoop5 --> StoreContext
+    StoreContext --> WaitStep[Wait STEP_SLEEP]
+    WaitStep --> CheckBudget
+    
+    %% Post-Loop Processing
+    ExitLoop --> CheckFinal{isFinal?}
+    CheckFinal -->|No| BeastMode[Beast Mode]
+    CheckFinal -->|Yes| FinalProcessing[Process Final Answer]
+    
+    BeastMode --> BeastPrompt[Generate Beast Prompt]
+    BeastPrompt --> BeastModel[Generate Beast Response]
+    BeastModel --> SetFinal[Set isFinal=true]
+    SetFinal --> FinalProcessing
+    
+    %% Final Assembly
+    FinalProcessing --> IsTrivial{Trivial?}
+    IsTrivial -->|Yes| BuildSimple[Build Simple MD]
+    IsTrivial -->|No| IsAggregated{Aggregated?}
+    
+    IsAggregated -->|Yes| BuildAggregate[Concat Answers & Filter Images]
+    IsAggregated -->|No| FinalizeAnswer[Finalize Answer]
+    
+    FinalizeAnswer --> BuildReferences[Build References]
+    BuildReferences --> WithImages{With Images?}
+    WithImages -->|Yes| BuildImageRefs[Build Image References]
+    WithImages -->|No| PrepareReturn[Prepare Return]
+    
+    BuildImageRefs --> PrepareReturn
+    BuildSimple --> PrepareReturn
+    BuildAggregate --> PrepareReturn
+    PrepareReturn --> End([End])
 ```
