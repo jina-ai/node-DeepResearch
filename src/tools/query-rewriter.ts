@@ -1,7 +1,7 @@
 import { PromptPair, SearchAction, SERPQuery, TrackerContext } from '../types';
 import { ObjectGeneratorSafe } from "../utils/safe-generator";
 import { Schemas } from "../utils/schemas";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logInfo, logError } from '../logging';
 
 
 function getPrompt(query: string, think: string, context: string): PromptPair {

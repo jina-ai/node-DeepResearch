@@ -22,19 +22,21 @@ export function chunkText(text: string, options: ChunkOptions = {}): {
             chunks = text.split(/(?<=[.!?。！？])/).filter(chunk => chunk.trim().length > 0);
             break;
 
-        case 'characters':
+        case 'characters': {
             const chunkSize = Number(options.value) || 1000;
             for (let i = 0; i < text.length; i += chunkSize) {
                 chunks.push(text.slice(i, i + chunkSize));
             }
             break;
+        }
 
-        case 'regex':
+        case 'regex': {
             if (!options.value || typeof options.value !== 'string') {
                 throw new Error('Regex pattern is required for regex chunking');
             }
             chunks = text.split(new RegExp(options.value)).filter(chunk => chunk.trim().length > 0);
             break;
+        }
 
         default:
             throw new Error('Invalid chunking type');

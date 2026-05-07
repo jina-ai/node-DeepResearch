@@ -1,7 +1,7 @@
 import { ObjectGeneratorSafe } from "../utils/safe-generator";
 import { CodeGenResponse, PromptPair, TrackerContext } from "../types";
 import { Schemas } from "../utils/schemas";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logInfo, logDebug, logWarning } from '../logging';
 
 
 interface SandboxResult {

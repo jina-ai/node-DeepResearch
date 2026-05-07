@@ -149,7 +149,7 @@ async function getBatchEmbeddingsWithRetry(
       }
 
       const receivedIndices = new Set(response.data.data.map(item => item.index));
-      const dimensionSize = response.data.data[0]?.embedding?.length || options.dimensions || 1024;
+      // const dimensionSize = response.data.data[0]?.embedding?.length || options.dimensions || 1024;
 
       // Process successful embeddings
       const successfulEmbeddings: number[][] = [];
