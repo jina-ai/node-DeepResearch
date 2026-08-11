@@ -45,6 +45,7 @@ export const OPENAI_API_KEY = env.OPENAI_API_KEY;
 export const JINA_API_KEY = env.JINA_API_KEY;
 export const BRAVE_API_KEY = env.BRAVE_API_KEY;
 export const SERPER_API_KEY = env.SERPER_API_KEY;
+export const TAVILY_API_KEY = env.TAVILY_API_KEY;
 export const SEARCH_PROVIDER = configJson.defaults.search_provider;
 export const STEP_SLEEP = configJson.defaults.step_sleep;
 

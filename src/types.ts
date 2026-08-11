@@ -156,6 +156,20 @@ export interface SerperSearchResponse {
   credits: number;
 }
 
+export interface TavilySearchResponse {
+  query: string;
+  results: Array<{
+    title: string;
+    url: string;
+    content: string;
+    score: number;
+    published_date?: string;
+  }>;
+  usage?: {
+    credits?: number;
+  };
+}
+
 
 export interface ReadResponse {
   code: number;
