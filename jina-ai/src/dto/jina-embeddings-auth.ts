@@ -219,7 +219,7 @@ export class JinaEmbeddingsAuthDTO extends AutoCastable {
 
         return this.sefoBilling.reportUsage(this.bearerToken!, {
             model_name: mdl,
-            request_path: '/',
+            request_path: '/encode',
             user_id: uid,
             num_request: 1,
             num_token: tokenCount,
