@@ -18,7 +18,7 @@
     "vertex": {
       "createClient": "createGoogleVertex",
       "clientConfig": {
-        "location": "us"
+        "location": "us-central1"
       }
     },
     "gemini": {
