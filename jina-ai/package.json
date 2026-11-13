@@ -27,7 +27,7 @@
     "@ai-sdk/google-vertex": "^2.1.12",
     "@google-cloud/firestore": "^7.11.0",
     "@google-cloud/storage": "^7.15.1",
-    "civkit": "^0.8.3-15926cb",
+    "civkit": "^0.10.5-2ed856a",
     "dayjs": "^1.11.13",
     "lodash": "^4.17.21",
     "reflect-metadata": "^0.2.2",

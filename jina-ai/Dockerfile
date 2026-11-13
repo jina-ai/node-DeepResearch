@@ -1,5 +1,5 @@
 # ---- BUILD STAGE ----
-FROM node:22-slim AS builder
+FROM node:24-slim AS builder
 
 # Set working directory
 WORKDIR /app
@@ -27,7 +27,7 @@ WORKDIR /app/jina-ai
 RUN npm run build
 
 # ---- PRODUCTION STAGE ----
-FROM node:22 AS production
+FROM node:24 AS production
 
 # Set working directory
 WORKDIR /app

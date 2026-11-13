@@ -6,40 +6,20 @@ import {
 import { parseJSONText } from 'civkit/vectorize';
 import { htmlEscape } from 'civkit/escape';
 import { marshalErrorLike } from 'civkit/lang';
+import { HashManager } from 'civkit/hash';
 
 import type express from 'express';
 
 import logger from '../lib/logger';
 import { AsyncLocalContext } from '../lib/async-context';
 import { InjectProperty } from '../lib/registry';
-import { JinaEmbeddingsDashboardHTTP } from '../lib/billing';
-import envConfig from '../lib/env-config';
+import { SefoBillingHTTP } from '../lib/billing';
 
 import { FirestoreRecord } from '../lib/firestore';
 import _ from 'lodash';
 import { RateLimitDesc } from '../rate-limit';
 
 export class JinaWallet extends AutoCastable {
-    @Prop({
-        default: ''
-    })
-    user_id!: string;
-
-    @Prop({
-        default: 0
-    })
-    trial_balance!: number;
-
-    @Prop()
-    trial_start?: Date;
-
-    @Prop()
-    trial_end?: Date;
-
-    @Prop({
-        default: 0
-    })
-    regular_balance!: number;
 
     @Prop({
         default: 0
@@ -48,7 +28,7 @@ export class JinaWallet extends AutoCastable {
 }
 
 export class JinaEmbeddingsTokenAccount extends FirestoreRecord {
-    static override collectionName = 'embeddingsTokenAccounts';
+    static override collectionName = 'embeddingsTokenAccountsHashed';
 
     override _id!: string;
 
@@ -56,37 +36,6 @@ export class JinaEmbeddingsTokenAccount extends FirestoreRecord {
         required: true
     })
     user_id!: string;
-
-    @Prop({
-        nullable: true,
-        type: String,
-    })
-    email?: string;
-
-    @Prop({
-        nullable: true,
-        type: String,
-    })
-    full_name?: string;
-
-    @Prop({
-        nullable: true,
-        type: String,
-    })
-    customer_id?: string;
-
-    @Prop({
-        nullable: true,
-        type: String,
-    })
-    avatar_url?: string;
-
-    // Not keeping sensitive info for now
-    // @Prop()
-    // billing_address?: object;
-
-    // @Prop()
-    // payment_method?: object;
 
     @Prop({
         required: true
@@ -143,13 +92,7 @@ export class JinaEmbeddingsTokenAccount extends FirestoreRecord {
 
 
 const authDtoLogger = logger.child({ service: 'JinaAuthDTO' });
-
-export interface FireBaseHTTPCtx {
-    req: express.Request,
-    res: express.Response,
-}
-
-const THE_VERY_SAME_JINA_EMBEDDINGS_CLIENT = new JinaEmbeddingsDashboardHTTP(envConfig.JINA_EMBEDDINGS_DASHBOARD_API_KEY);
+const md5Hasher = new HashManager('md5');
 
 @Also({
     openapi: {
@@ -179,7 +122,7 @@ export class JinaEmbeddingsAuthDTO extends AutoCastable {
     @InjectProperty(AsyncLocalContext)
     ctxMgr!: AsyncLocalContext;
 
-    jinaEmbeddingsDashboard = THE_VERY_SAME_JINA_EMBEDDINGS_CLIENT;
+    sefoBilling = new SefoBillingHTTP();
 
     static override from(input: any) {
         const instance = super.from(input) as JinaEmbeddingsAuthDTO;
@@ -212,9 +155,11 @@ export class JinaEmbeddingsAuthDTO extends AutoCastable {
             });
         }
 
+        const hashed = md5Hasher.hash(this.bearerToken);
+
         let account;
         try {
-            account = await JinaEmbeddingsTokenAccount.fromFirestore(this.bearerToken);
+            account = await JinaEmbeddingsTokenAccount.fromFirestore(hashed);
         } catch (err) {
             // FireStore would not accept any string as input and may throw if not happy with it
             void 0;
@@ -233,10 +178,10 @@ export class JinaEmbeddingsAuthDTO extends AutoCastable {
         }
 
         try {
-            const r = await this.jinaEmbeddingsDashboard.validateToken(this.bearerToken);
+            const r = await this.sefoBilling.validateToken(this.bearerToken);
             const brief = r.data;
             const draftAccount = JinaEmbeddingsTokenAccount.from({
-                ...account, ...brief, _id: this.bearerToken,
+                ...account, ...brief, _id: hashed,
                 lastSyncedAt: new Date()
             });
             await JinaEmbeddingsTokenAccount.save(draftAccount.degradeForFireStore(), undefined, { merge: true });
@@ -261,31 +206,25 @@ export class JinaEmbeddingsAuthDTO extends AutoCastable {
                 return account;
             }
 
-
             throw new DownstreamServiceFailureError(`Failed to authenticate: ${err}`);
         }
     }
 
-    async reportUsage(tokenCount: number, mdl: string, endpoint: string = '/encode') {
+    async reportUsage(tokenCount: number, mdl: string) {
         const user = await this.assertUser();
         const uid = user.user_id;
         user.wallet.total_balance -= tokenCount;
 
-        return this.jinaEmbeddingsDashboard.reportUsage(this.bearerToken!, {
+        const hashed = md5Hasher.hash(this.bearerToken!);
+
+        return this.sefoBilling.reportUsage(this.bearerToken!, {
             model_name: mdl,
-            api_endpoint: endpoint,
-            consumer: {
-                id: uid,
-                user_id: uid,
-            },
-            usage: {
-                total_tokens: tokenCount
-            },
-            labels: {
-                model_name: mdl
-            }
+            request_path: '/',
+            user_id: uid,
+            num_request: 1,
+            num_token: tokenCount,
         }).then((r) => {
-            JinaEmbeddingsTokenAccount.COLLECTION.doc(this.bearerToken!)
+            JinaEmbeddingsTokenAccount.COLLECTION.doc(hashed)
                 .update({ 'wallet.total_balance': JinaEmbeddingsTokenAccount.OPS.increment(-tokenCount) })
                 .catch((err) => {
                     authDtoLogger.warn(`Failed to update cache for ${uid}: ${err}`, { err: marshalErrorLike(err) });
