@@ -27,6 +27,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { ObjectGeneratorSafe } from "./utils/safe-generator";
 import { CodeSandbox } from "./tools/code-sandbox";
 import { serperSearch } from './tools/serper-search';
+import { parallelSearch } from './tools/parallel-search';
 import {
   addToAllURLs,
   rankURLs,
@@ -292,6 +293,7 @@ async function executeSearchQueries(
   const newKnowledge: KnowledgeItem[] = [];
   const searchedQueries: string[] = [];
   context.actionTracker.trackThink('search_for', SchemaGen.languageCode, { keywords: uniqQOnly.join(', ') });
+  const provider = searchProvider || SEARCH_PROVIDER;
   let utilityScore = 0;
   for (const query of keywordsQueries) {
     let results: UnNormalizedSearchSnippet[] = [];
@@ -302,7 +304,7 @@ async function executeSearchQueries(
 
     try {
       logDebug('Search query:', { query });
-      switch (searchProvider || SEARCH_PROVIDER) {
+      switch (provider) {
         case 'jina':
         case 'arxiv':
           const num = meta ? undefined : 30;
@@ -317,6 +319,9 @@ async function executeSearchQueries(
         case 'serper':
           results = (await serperSearch(query)).response.organic || [];
           break;
+        case 'parallel':
+          results = await parallelSearch(query);
+          break;
         default:
           results = [];
       }
@@ -325,7 +330,7 @@ async function executeSearchQueries(
         throw new Error('No results found');
       }
     } catch (error) {
-      logError(`${SEARCH_PROVIDER} search failed for query:`, {
+      logError(`${provider} search failed for query:`, {
         query,
         error: error instanceof Error ? error.message : String(error)
       });

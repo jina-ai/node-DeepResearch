@@ -79,6 +79,16 @@ export JINA_API_KEY=jina_...  # free jina api key, get from https://jina.ai/read
 npm run dev $QUERY
 ```
 
+### Use Parallel for web search
+
+Set `defaults.search_provider` to `"parallel"` in `config.json` for the CLI and
+self-hosted server. You can also send `"search_provider": "parallel"` in a
+`POST /v1/chat/completions` request to select it for that request. Parallel
+receives the search queries and returns excerpts for citations. It requires no
+Parallel API key.
+
+Keep the Jina API key for page reads and citation ranking.
+
 ### Official Site
 
 You can try it on [our official site](https://search.jina.ai).

@@ -36,6 +36,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "duck-duck-scrape": "^2.2.7",
+    "eventsource-parser": "^3.0.0",
     "express": "^4.21.2",
     "express-validator": "^7.2.1",
     "hjson": "^3.2.2",
