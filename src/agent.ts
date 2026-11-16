@@ -27,6 +27,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { ObjectGeneratorSafe } from "./utils/safe-generator";
 import { CodeSandbox } from "./tools/code-sandbox";
 import { serperSearch } from './tools/serper-search';
+import { tavilySearch } from './tools/tavily-search';
 import {
   addToAllURLs,
   rankURLs,
@@ -316,6 +317,14 @@ async function executeSearchQueries(
           break;
         case 'serper':
           results = (await serperSearch(query)).response.organic || [];
+          break;
+        case 'tavily':
+          results = (await tavilySearch(query, context.tokenTracker)).response.results.map(result => ({
+            title: result.title,
+            url: result.url,
+            description: result.content,
+            date: result.published_date,
+          }));
           break;
         default:
           results = [];

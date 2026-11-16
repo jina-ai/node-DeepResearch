@@ -68,16 +68,19 @@ It is also available on npm but not recommended for now, as the code is still un
 
 ## Usage
 
-We use Gemini (latest `gemini-2.0-flash`) / OpenAI / [LocalLLM](#use-local-llm) for reasoning, [Jina Reader](https://jina.ai/reader) for searching and reading webpages, you can get a free API key with 1M tokens from jina.ai. 
+We use Gemini (latest `gemini-2.0-flash`) / OpenAI / [LocalLLM](#use-local-llm) for reasoning, [Jina Reader](https://jina.ai/reader) for searching and reading webpages, you can get a free API key with 1M tokens from jina.ai. Tavily Search is also available as an optional search provider.
 
 ```bash
 export GEMINI_API_KEY=...  # for gemini
 # export OPENAI_API_KEY=... # for openai
 # export LLM_PROVIDER=openai # for openai
 export JINA_API_KEY=jina_...  # free jina api key, get from https://jina.ai/reader
+# export TAVILY_API_KEY=...  # use with search_provider: tavily
 
 npm run dev $QUERY
 ```
+
+Set `"search_provider": "tavily"` in `config.json` to select Tavily. Its daily, weekly, monthly, and yearly freshness filters are supported; hourly freshness uses Tavily's normal search behavior.
 
 ### Official Site
 
