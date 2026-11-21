@@ -63,6 +63,7 @@ export async function readUrl(
 
     return { response: data };
   } catch (error: any) {
+    logDebug(`Read error: ${error.message}`);
     throw error;
   }
 }

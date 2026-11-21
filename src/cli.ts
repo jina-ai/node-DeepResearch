@@ -2,7 +2,7 @@
 import { Command } from 'commander';
 import { getResponse } from './agent';
 import { version } from '../package.json';
-import { logInfo, logError, logDebug, logWarning } from './logging';
+import { logInfo, logError } from './logging';
 
 const program = new Command();
 

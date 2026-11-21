@@ -14,7 +14,7 @@ module.exports = {
     sourceType: 'module'
   },
   rules: {
-    'no-console': ['error', { allow: ['log', 'error'] }],
+    'no-console': ['error', { allow: ['log', 'error', 'warn'] }],
     '@typescript-eslint/no-var-requires': 'off',
     '@typescript-eslint/no-explicit-any': 'off'
   },

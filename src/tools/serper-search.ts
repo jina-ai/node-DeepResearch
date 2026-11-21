@@ -1,6 +1,5 @@
 import { SERPER_API_KEY } from "../config";
 import axiosClient from "../utils/axios-client";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
 
 import { SerperSearchResponse, SERPQuery } from '../types';
 
