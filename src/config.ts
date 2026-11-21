@@ -8,7 +8,7 @@ import { logInfo, logError, logDebug, logWarning } from './logging';
 dotenv.config();
 
 // Types
-export type LLMProvider = 'openai' | 'gemini' | 'vertex';
+export type LLMProvider = 'openai' | 'gemini' | 'vertex' | 'litellm';
 export type ToolName = keyof typeof configJson.models.gemini.tools;
 
 // Type definitions for our config structure
@@ -42,6 +42,8 @@ if (env.https_proxy) {
 export const OPENAI_BASE_URL = env.OPENAI_BASE_URL;
 export const GEMINI_API_KEY = env.GEMINI_API_KEY;
 export const OPENAI_API_KEY = env.OPENAI_API_KEY;
+export const LITELLM_API_KEY = process.env.LITELLM_API_KEY || '';
+export const LITELLM_BASE_URL = process.env.LITELLM_BASE_URL || 'http://localhost:4000/v1';
 export const JINA_API_KEY = env.JINA_API_KEY;
 export const BRAVE_API_KEY = env.BRAVE_API_KEY;
 export const SERPER_API_KEY = env.SERPER_API_KEY;
@@ -58,7 +60,7 @@ export const LLM_PROVIDER: LLMProvider = (() => {
 })();
 
 function isValidProvider(provider: string): provider is LLMProvider {
-  return provider === 'openai' || provider === 'gemini' || provider === 'vertex';
+  return provider === 'openai' || provider === 'gemini' || provider === 'vertex' || provider === 'litellm';
 }
 
 interface ToolConfig {
@@ -110,6 +112,13 @@ export function getModel(toolName: ToolName) {
     }
 
     return createOpenAI(opt)(config.model);
+  }
+
+  if (LLM_PROVIDER === 'litellm') {
+    return createOpenAI({
+      apiKey: LITELLM_API_KEY || 'sk-1234',
+      baseURL: LITELLM_BASE_URL,
+    })(config.model);
   }
 
   if (LLM_PROVIDER === 'vertex') {
