@@ -7,7 +7,7 @@ import { GEMINI_API_KEY } from '../config';
 import { z } from 'zod';
 import { AnswerAction, TrackerContext } from "../types";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { logInfo, logError, logDebug, logWarning } from '../logging';
+import { logInfo, logError } from '../logging';
 
 const execAsync = promisify(exec);
 
@@ -108,7 +108,7 @@ Minor wording differences are acceptable as long as the core information of the 
 
   try {
     const result = await generateObject({
-      model: createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-3.1-flash-lite-preview'),  // migrated from gemini-2.5-flash on 2026-05-01
+      model: createGoogleGenerativeAI({ apiKey: GEMINI_API_KEY })('gemini-3.1-flash-lite'),
       schema,
       prompt,
       maxTokens: 1000,
